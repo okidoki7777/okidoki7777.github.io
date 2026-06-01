@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予約管理システム - Luminous Reservation Manager</title>
+    <!-- Google Fonts: Outfit (English) & Noto Sans JP (Japanese) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <span class="logo-icon">✨</span>
+                <h1>Luminous <span>Reservation Manager</span></h1>
+            </div>
+            <div class="header-actions">
+                <button id="btn-settings" class="btn btn-secondary" title="料金設定を開く">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <span>料金システム設定</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Metrics Dashboard -->
+        <section class="dashboard-metrics no-print">
+            <div class="metric-card">
+                <div class="metric-info">
+                    <span class="metric-label">本日の予約数</span>
+                    <h2 id="metric-today-count" class="metric-value">0 <span class="unit">件</span></h2>
+                </div>
+                <div class="metric-icon-bg count-icon">📅</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-info">
+                    <span class="metric-label">本日の総売上</span>
+                    <h2 id="metric-today-sales" class="metric-value">¥0</h2>
+                </div>
+                <div class="metric-icon-bg sales-icon">🪙</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-info">
+                    <span class="metric-label">登録全予約数</span>
+                    <h2 id="metric-total-count" class="metric-value">0 <span class="unit">件</span></h2>
+                </div>
+                <div class="metric-icon-bg total-icon">📂</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-info">
+                    <span class="metric-label">登録総売上</span>
+                    <h2 id="metric-total-sales" class="metric-value">¥0</h2>
+                </div>
+                <div class="metric-icon-bg grand-icon">🏆</div>
+            </div>
+        </section>
+
+        <!-- Main Workspace -->
+        <main class="app-workspace">
+            
+            <!-- Reservation Form Panel -->
+            <section class="panel form-panel no-print">
+                <div class="panel-header">
+                    <h2 id="form-title">📝 新規予約登録</h2>
+                    <button id="btn-cancel-edit" class="btn btn-text btn-sm hidden">編集をキャンセル</button>
+                </div>
+                
+                <form id="reservation-form" novalidate>
+                    <!-- Form Hidden Field for Edit State -->
+                    <input type="hidden" id="edit-index" value="">
+
+                    <!-- Step 1 & 2: Date & Time -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="res-date">① 日付 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="date" id="res-date" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="res-time">② 開始時間 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="time" id="res-time" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 & 4: Customer Details -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customer-name">③ お客様名 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="text" id="customer-name" placeholder="例: 山田 太郎" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-phone">④ 電話番号 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="tel" id="customer-phone" placeholder="例: 090-1234-5678" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Type & Media Source -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>顧客区分 <span class="required">*</span></label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="customer-type" value="new" checked> 新規 (新)
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="customer-type" value="repeater"> リピーター (Ｒ)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="media-group">
+                            <label for="media-select">広告媒体 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <select id="media-select">
+                                    <option value="" disabled selected>媒体を選択してください</option>
+                                    <option value="シティヘヴン">シティヘヴン</option>
+                                    <option value="ぴゅあらば">ぴゅあらば</option>
+                                    <option value="口コミ情報局">口コミ情報局</option>
+                                    <option value="風俗じゃぱん">風俗じゃぱん</option>
+                                    <option value="デリヘルじゃぱん">デリヘルじゃぱん</option>
+                                    <option value="HP">HP</option>
+                                    <option value="サンスポ">サンスポ</option>
+                                    <option value="その他">その他</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 & 6: Staff & Course -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="staff-name">⑤ 女の子の名前 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="text" id="staff-name" placeholder="例: アリス" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="course-duration">⑥ コース時間 <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <select id="course-duration" required>
+                                    <option value="" disabled selected>時間を選択してください</option>
+                                    <option value="60">60分</option>
+                                    <option value="90">90分</option>
+                                    <option value="120">120分</option>
+                                    <option value="150">150分</option>
+                                    <option value="180">180分</option>
+                                    <option value="custom">カスタム時間入力</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Staff Nomination Type & Reservation Type -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>指名区分 <span class="required">*</span></label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="nomination-type" value="main" checked> 本指名 (本)
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="nomination-type" value="net"> ネット (N)
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="nomination-type" value="free"> フリー (F)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>予約タイプ <span class="required">*</span></label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="res-type" value="meetup" checked> 待ち合わせ
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="res-type" value="delivery"> デリバリー
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Custom Duration Input (Conditional) -->
+                    <div id="custom-duration-group" class="form-group hidden animation-fade">
+                        <label for="custom-duration-input">カスタム時間（分） <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="number" id="custom-duration-input" min="1" max="1440" placeholder="例: 80">
+                        </div>
+                    </div>
+
+                    <!-- Step 7: Automatic Fee Preview (read-only style display) -->
+                    <div class="form-group fee-preview-group">
+                        <label>⑦ コース基本料金（自動計算）</label>
+                        <div class="fee-display">
+                            <span class="currency">¥</span>
+                            <span id="base-fee-display">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Meetup & Detail Information -->
+                    <div class="adjustment-section" id="meetup-detail-section">
+                        <h3>運行詳細情報</h3>
+                        <div class="form-row">
+                            <div class="form-group" id="meetup-place-group">
+                                <label for="meetup-place-select">待ち合わせ場所 <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <select id="meetup-place-select">
+                                        <!-- Will be dynamically loaded -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group hidden animation-fade" id="meetup-place-custom-group">
+                                <label for="meetup-place-custom">カスタム待ち合わせ場所</label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="meetup-place-custom" placeholder="例: ローソン前">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="info-op-select">OP (オプション)</label>
+                                <div class="input-wrapper">
+                                    <select id="info-op-select">
+                                        <!-- Will be dynamically loaded -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group hidden animation-fade" id="op-custom-group">
+                                <label for="info-op-custom">カスタムOP</label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="info-op-custom" placeholder="例: VIPコース">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="info-prev">前回 (過去情報など)</label>
+                                <div class="input-wrapper">
+                                    <input type="text" id="info-prev" placeholder="例: リピーター、チップあり">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 8: Adjustment parameters -->
+                    <div class="adjustment-section">
+                        <h3>⑧ 料金の調整（交通費・割引など）</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="adj-transport">交通費 (加算)</label>
+                                <div class="input-wrapper unit-right">
+                                    <input type="number" id="adj-transport" min="0" step="500" value="0">
+                                    <span class="input-unit">円</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="adj-discount">割引額 (減算)</label>
+                                <div class="input-wrapper unit-right">
+                                    <input type="number" id="adj-discount" min="0" step="500" value="0">
+                                    <span class="input-unit">円</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="adj-memo">メモ（デリバリーの場合は場所を入力: 例 堺区デリ）</label>
+                            <div class="input-wrapper">
+                                <input type="text" id="adj-memo" placeholder="例: 堺区デリ、WEB初回割引">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total Amount Display -->
+                    <div class="total-price-card">
+                        <div class="total-label">お支払総額 (算出結果)</div>
+                        <div class="total-value">
+                            <span class="currency">¥</span>
+                            <span id="total-fee-display">0</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-submit" class="btn btn-primary btn-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        <span id="submit-text">予約を追加する</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Reservation List Panel -->
+            <section class="panel list-panel">
+                <div class="panel-header no-print">
+                    <h2>📅 予約一覧</h2>
+                    <div class="filter-controls">
+                        <div class="filter-group">
+                            <label for="filter-date" class="sr-only">表示日</label>
+                            <input type="date" id="filter-date" title="表示日付で絞り込み">
+                        </div>
+                        <button id="btn-filter-today" class="btn btn-outline btn-sm">本日</button>
+                        <button id="btn-filter-clear" class="btn btn-text btn-sm">全表示</button>
+                    </div>
+                </div>
+
+                <!-- Print Header (Hidden on screen, shown in print) -->
+                <div class="print-only print-header">
+                    <h1>予約台帳</h1>
+                    <div class="print-meta">
+                        <div><strong>出力日時:</strong> <span id="print-timestamp">2026-05-31 12:00</span></div>
+                        <div><strong>対象日:</strong> <span id="print-target-date">すべて</span></div>
+                    </div>
+                </div>
+
+                <!-- Toolbar for actions -->
+                <div class="list-toolbar no-print">
+                    <div class="toolbar-stats">
+                        表示中の合計金額: <strong id="visible-total-sales">¥0</strong>
+                    </div>
+                    <div class="toolbar-buttons">
+                        <button id="btn-csv" class="btn btn-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            CSVダウンロード
+                        </button>
+                        <button id="btn-print" class="btn btn-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            印刷する
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="table-container">
+                    <table id="reservation-table">
+                        <thead>
+                            <tr>
+                                <th class="col-date">日付</th>
+                                <th class="col-time">開始時間</th>
+                                <th class="col-cust">お客様名</th>
+                                <th class="col-phone no-print-col">電話番号</th>
+                                <th class="col-staff">女の子</th>
+                                <th class="col-course">コース</th>
+                                <th class="col-base-fee">基本料金</th>
+                                <th class="col-adj">調整</th>
+                                <th class="col-total">合計料金</th>
+                                <th class="col-actions no-print">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reservation-list-body">
+                            <!-- Rows will be injected dynamically -->
+                            <tr>
+                                <td colspan="10" class="empty-state">
+                                    <div class="empty-message">
+                                        <div class="empty-icon">📁</div>
+                                        <p>予約データがありません。左のフォームから追加してください。</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="print-only print-footer">
+                    <p>Luminous Reservation Manager - 管理システム</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden no-print">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>⚙️ システム設定</h2>
+                <button id="modal-close" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button type="button" class="tab-btn active" id="tab-btn-rates">コース料金設定</button>
+                    <button type="button" class="tab-btn" id="tab-btn-places">待ち合わせ場所管理</button>
+                    <button type="button" class="tab-btn" id="tab-btn-ops">OP管理</button>
+                </div>
+                
+                <!-- Rates Form Tab -->
+                <div class="tab-content" id="tab-rates-content">
+                    <p class="settings-desc">コース時間(分)に応じた自動計算用の基本料金を設定できます。ここで保存した価格が自動計算に適用されます。</p>
+                    <form id="settings-form">
+                        <div class="setting-row">
+                            <label for="price-60">60分コース基本料金</label>
+                            <div class="input-wrapper unit-right">
+                                <input type="number" id="price-60" min="0" step="500" required>
+                                <span class="input-unit">円</span>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="price-90">90分コース基本料金</label>
+                            <div class="input-wrapper unit-right">
+                                <input type="number" id="price-90" min="0" step="500" required>
+                                <span class="input-unit">円</span>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="price-120">120分コース基本料金</label>
+                            <div class="input-wrapper unit-right">
+                                <input type="number" id="price-120" min="0" step="500" required>
+                                <span class="input-unit">円</span>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="price-150">150分コース基本料金</label>
+                            <div class="input-wrapper unit-right">
+                                <input type="number" id="price-150" min="0" step="500" required>
+                                <span class="input-unit">円</span>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="price-180">180分コース基本料金</label>
+                            <div class="input-wrapper unit-right">
+                                <input type="number" id="price-180" min="0" step="500" required>
+                                <span class="input-unit">円</span>
+                            </div>
+                        </div>
+                        <div class="setting-row">
+                            <label for="price-custom-min">カスタム時間 (1分あたり単価)</label>
+                            <div class="input-wrapper unit-right">
+                                <input type="number" id="price-custom-min" min="0" step="10" required>
+                                <span class="input-unit">円 / 分</span>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" id="btn-reset-settings" class="btn btn-outline">初期値に戻す</button>
+                            <button type="submit" class="btn btn-primary">設定を保存する</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Places Manager Tab -->
+                <div class="tab-content hidden" id="tab-places-content">
+                    <p class="settings-desc">「待ち合わせ」の選択肢を追加・削除できます。追加された項目は予約登録フォームに即座に反映されます。</p>
+                    <div class="place-manager">
+                        <div class="place-add-row">
+                            <div class="input-wrapper" style="flex: 1;">
+                                <input type="text" id="new-place-input" placeholder="例: ローソン前">
+                            </div>
+                            <button type="button" id="btn-add-place" class="btn btn-primary">追加</button>
+                        </div>
+                        <div class="places-list-container">
+                            <ul id="places-list" class="places-list">
+                                <!-- Loaded dynamically by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OP Manager Tab -->
+                <div class="tab-content hidden" id="tab-ops-content">
+                    <p class="settings-desc">OP（オプション）の選択肢を追加・削除できます。追加された項目は予約登録フォームに即座に反映されます。</p>
+                    <div class="place-manager">
+                        <div class="place-add-row">
+                            <div class="input-wrapper" style="flex: 1;">
+                                <input type="text" id="new-op-input" placeholder="例: コスプレ">
+                            </div>
+                            <button type="button" id="btn-add-op" class="btn btn-primary">追加</button>
+                        </div>
+                        <div class="places-list-container">
+                            <ul id="ops-list" class="places-list">
+                                <!-- Loaded dynamically by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification System -->
+    <div id="toast-container" class="toast-container no-print"></div>
+
+    <!-- Print Cards Container (Hidden on screen, displayed only during printing) -->
+    <div id="print-cards-container" class="print-only"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
