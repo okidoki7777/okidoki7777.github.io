@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupMeetupCustom = document.getElementById('meetup-place-custom-group');
     const inputMeetupCustom = document.getElementById('meetup-place-custom');
     
-    const inputOp = document.getElementById('info-op');
+    const inputOp = document.getElementById('info-op-select');
     const inputPrev = document.getElementById('info-prev');
     
     // Displays
