@@ -1,4 +1,4 @@
-// 初期データ設定
+// 初期設定データ
 const BASE_PRICES = {
     60: 10000, 75: 13000, 90: 15000, 120: 21000, 150: 27000,
     180: 33000, 240: 45000, 300: 57000, 360: 69000
@@ -12,7 +12,18 @@ const OPTIONS_LIST = [
     "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパン・ノーブラ"
 ];
 
-// ローカルストレージ連動用の状態管理
+// 媒体名の自動変換マッピング
+const MEDIA_MAPPING = {
+    "シティヘヴン": "ヘヴン",
+    "ぴゅあらば": "ぴゅあ",
+    "デリヘルタウン": "タウン",
+    "口コミ情報局": "口コミ",
+    "風俗じゃぱん": "風じゃ",
+    "デリヘルじゃぱん": "デリじゃ",
+    "HP": "HP",
+    "その他": "その他"
+};
+
 let girlsData = JSON.parse(localStorage.getItem('girls_list')) || ["さつき", "みか", "ひなた"];
 let allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
 
@@ -20,93 +31,110 @@ document.addEventListener('DOMContentLoaded', () => {
     initFormSelects();
     renderGirls();
     updateSummary();
-    
-    // 今日の日付を初期セット
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('reserve-date').value = todayStr;
 
-    // イベントリスナー登録
+    // 初期日付セット
+    document.getElementById('reserve-date').value = new Date().toISOString().split('T')[0];
+
+    // イベント連動設定
+    document.getElementById('customer-class').addEventListener('change', toggleMediaVisibility);
     document.getElementById('course-time').addEventListener('change', calculateTotalPrice);
     document.getElementById('extension-time').addEventListener('change', calculateTotalPrice);
+    document.getElementById('transport-fee').addEventListener('change', calculateTotalPrice);
+    document.getElementById('nomination-class').addEventListener('change', calculateTotalPrice);
     document.getElementById('add-girl-btn').addEventListener('click', addNewGirl);
     document.getElementById('reservation-form').addEventListener('submit', handleFormSubmit);
 
-    // 初回計算
+    // 初回表示時の動作トリガー
     calculateTotalPrice();
+    toggleMediaVisibility();
 });
 
-// 選択肢（コース・延長・時刻・オプション）の初期生成
 function initFormSelects() {
+    // コース時間
     const courseSelect = document.getElementById('course-time');
     Object.keys(BASE_PRICES).forEach(mins => {
-        let opt = new Option(`${mins}分 (${BASE_PRICES[mins].toLocaleString()}円)`, mins);
-        courseSelect.add(opt);
+        courseSelect.add(new Option(`${mins}分 (${BASE_PRICES[mins].toLocaleString()}円)`, mins));
     });
 
+    // 延長時間
     const extSelect = document.getElementById('extension-time');
     Object.keys(EXTENSION_PRICES).forEach(mins => {
         let label = mins == 0 ? "なし" : `+${mins}分 (+${EXTENSION_PRICES[mins].toLocaleString()}円)`;
-        let opt = new Option(label, mins);
-        extSelect.add(opt);
+        extSelect.add(new Option(label, mins));
     });
 
-    // 24時間表記を拡張した30時システム (5分刻み)
+    // 交通費 (0円〜15000円、1000円単位)
+    const transSelect = document.getElementById('transport-fee');
+    transSelect.add(new Option("なし (0円)", 0));
+    for (let f = 1000; f <= 15000; f += 1000) {
+        transSelect.add(new Option(`${f.toLocaleString()}円`, f));
+    }
+
+    // 30時制 5分刻み時刻
     const timeSelect = document.getElementById('start-time');
     for (let h = 9; h <= 30; h++) {
         for (let m = 0; m < 60; m += 5) {
-            if (h === 30 && m > 0) break; // 30:00 でストップ
-            let displayH = h;
-            let timeStr = `${displayH}:${String(m).padStart(2, '0')}`;
+            if (h === 30 && m > 0) break;
+            let timeStr = `${h}:${String(m).padStart(2, '0')}`;
             timeSelect.add(new Option(timeStr, timeStr));
         }
     }
 
-    // オプションチェックボックスのレンダリング
+    // 無料オプション
     const optContainer = document.getElementById('options-container');
-    OPTIONS_LIST.forEach((op, index) => {
+    OPTIONS_LIST.forEach(op => {
         let lbl = document.createElement('label');
         lbl.innerHTML = `<input type="checkbox" class="op-checkbox" value="${op}"> ${op}`;
         optContainer.appendChild(lbl);
     });
 }
 
-// 料金の自動連動算出
+// 顧客区分で「新(新規)」が選ばれた時のみ媒体プルダウンを表示
+function toggleMediaVisibility() {
+    const custClass = document.getElementById('customer-class').value;
+    const mediaGroup = document.getElementById('media-group');
+    if (custClass === '新') {
+        mediaGroup.classList.remove('hidden');
+    } else {
+        mediaGroup.classList.add('hidden');
+    }
+}
+
+// 金額の自動連動算出 (本指名の+1000円と交通費を組み込む)
 function calculateTotalPrice() {
     const courseMins = document.getElementById('course-time').value;
     const extMins = document.getElementById('extension-time').value || 0;
+    const transport = Number(document.getElementById('transport-fee').value || 0);
+    const nomination = document.getElementById('nomination-class').value;
+
+    let base = BASE_PRICES[courseMins] || 0;
+    let ext = EXTENSION_PRICES[extMins] || 0;
     
-    const base = BASE_PRICES[courseMins] || 0;
-    const ext = EXTENSION_PRICES[extMins] || 0;
-    
-    document.getElementById('total-price').value = base + ext;
+    // 指名区分が「本」なら1000円プラス
+    let nominationAdd = (nomination === '本') ? 1000 : 0;
+
+    document.getElementById('total-price').value = base + ext + transport + nominationAdd;
 }
 
-// 女の子リストの描画とプルダウンの同期
 function renderGirls() {
     const listEl = document.getElementById('girl-list');
     const selectEl = document.getElementById('girl-select');
-    
     listEl.innerHTML = '';
-    // プルダウンを一度クリアして初期化
     selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
 
     girlsData.forEach((girl, index) => {
-        // 管理リスト追加
         let li = document.createElement('li');
         li.innerHTML = `<span>${girl}</span><span class="delete-girl" onclick="deleteGirl(${index})">× 削除</span>`;
         listEl.appendChild(li);
-
-        // プルダウン追加
         selectEl.add(new Option(girl, girl));
     });
-    
     localStorage.setItem('girls_list', JSON.stringify(girlsData));
 }
 
 function addNewGirl() {
     const input = document.getElementById('new-girl-name');
     const name = input.value.trim();
-    if(name && !girlsData.includes(name)) {
+    if (name && !girlsData.includes(name)) {
         girlsData.push(name);
         input.value = '';
         renderGirls();
@@ -114,40 +142,35 @@ function addNewGirl() {
 }
 
 function deleteGirl(index) {
-    if(confirm("この女の子を削除しますか？")) {
+    if (confirm("この女の子を削除しますか？")) {
         girlsData.splice(index, 1);
         renderGirls();
     }
 }
 
-// 確認電話時刻の算出ロジック
+// 確認電話時刻の計算ロジック
 function calculateConfirmTime(startTimeStr) {
     let [h, m] = startTimeStr.split(':').map(Number);
-    
-    // 【特殊条件】9:30 の時のみ30分前の 9:00 にする
-    if (h === 9 && m === 30) {
+
+    // 【修正条件】9:30〜9:59の予約は、一律(9:00)にする
+    if (h === 9 && m >= 30 && m <= 59) {
         return `(9:00)`;
     }
-    
-    // 原則は1時間前
+
+    // 10:00以降、およびその他は規定通り1時間前
     let targetH = h - 1;
     let targetM = m;
-    
+
     return `(${targetH}:${String(targetM).padStart(2, '0')})`;
 }
 
-// 集計エリア（本日の件数・売上、全体件数・売上）の更新
 function updateSummary() {
     const todayStr = new Date().toISOString().split('T')[0];
-    
-    let todayCount = 0;
-    let todaySales = 0;
-    let totalCount = allReservations.length;
-    let totalSales = 0;
+    let todayCount = 0, todaySales = 0, totalCount = allReservations.length, totalSales = 0;
 
     allReservations.forEach(res => {
         totalSales += Number(res.price);
-        if(res.date === todayStr) {
+        if (res.date === todayStr) {
             todayCount++;
             todaySales += Number(res.price);
         }
@@ -159,13 +182,12 @@ function updateSummary() {
     document.getElementById('total-sales').textContent = totalSales.toLocaleString();
 }
 
-// フォーム送信時：レシートへの反映、およびデータ集計処理
 function handleFormSubmit(e) {
     e.preventDefault();
 
-    // 入力値の取得
     const dateVal = document.getElementById('reserve-date').value;
-    const custType = document.getElementById('customer-type').value;
+    const custClass = document.getElementById('customer-class').value;
+    const nominationClass = document.getElementById('nomination-class').value;
     const girl = document.getElementById('girl-select').value;
     const courseMins = Number(document.getElementById('course-time').value);
     const extMins = Number(document.getElementById('extension-time').value || 0);
@@ -175,50 +197,58 @@ function handleFormSubmit(e) {
     const guideStatus = document.getElementById('guide-status').value;
     const hotelRoom = document.getElementById('hotel-room').value;
     const phone = document.getElementById('phone-number').value;
-    const meetingPlace = document.getElementById('meeting-place').value;
+    const meetingPlace = document.getElementById('meeting-place-select').value;
     const deliveryDetails = document.getElementById('delivery-details').value;
     const prevVisit = document.getElementById('prev-visit').value;
 
-    // 選択されたOPの収集
     let selectedOps = [];
-    document.querySelectorAll('.op-checkbox:checked').forEach(cb => {
-        selectedOps.push(cb.value);
-    });
+    document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-    // 確認電話時間の計算
+    // 顧客・指名区分のテキスト生成と媒体名自動省略変換
+    let custTypeStr = "";
+    if (custClass === '新') {
+        const mediaSelected = document.getElementById('media-select').value;
+        const mediaAbbrev = MEDIA_MAPPING[mediaSelected] || mediaSelected;
+        custTypeStr = `新・${nominationClass}(${mediaAbbrev})`;
+    } else {
+        custTypeStr = `${custClass}・${nominationClass}`;
+    }
+
+    // 待ち合わせ場所が「その他」の場合は印刷出力を空白にする
+    let locationStr = (meetingPlace === 'その他') ? "" : meetingPlace;
+
+    // 確認電話時刻の取得
     const confirmTimeStr = calculateConfirmTime(startTime);
 
-    // 日付フォーマット変換 (例: 2026-06-02 -> 6月2日)
+    // 日付成形
     let formattedDate = "";
-    if(dateVal) {
+    if (dateVal) {
         const d = new Date(dateVal);
         formattedDate = `${d.getMonth() + 1}月${d.getDate()}日`;
     }
 
-    // 🖨️ レシートプレビュー要素にデータを書き込み
+    // 🖨️ レシートへ値を代入
     document.getElementById('p-date').textContent = formattedDate;
-    document.getElementById('p-cust-type').textContent = custType || "—";
+    document.getElementById('p-cust-type').textContent = custTypeStr;
     document.getElementById('p-girl').textContent = girl;
-    document.getElementById('p-duration').textContent = extMins > 0 ? `${courseMins} + ${extMins}` : courseMins;
+    document.getElementById('p-duration').textContent = extMins > 0 ? `${courseMins}+${extMins}` : `${courseMins}`;
     document.getElementById('p-price').textContent = `${Number(price).toLocaleString()}円`;
     document.getElementById('p-time').textContent = startTime;
     document.getElementById('p-confirm-time').textContent = confirmTimeStr;
     document.getElementById('p-cust-name').textContent = custName || "—";
     document.getElementById('p-guide').textContent = guideStatus || "未選択";
-    document.getElementById('p-room').textContent = hotelRoom ? hotelRoom : ""; // 空白保証
+    document.getElementById('p-room').textContent = hotelRoom || ""; // 空白保証
     document.getElementById('p-phone').textContent = phone || "—";
-    document.getElementById('p-location').textContent = meetingPlace || "—";
+    document.getElementById('p-location').textContent = locationStr;
     document.getElementById('p-options').textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
     document.getElementById('p-details').textContent = deliveryDetails || "—";
     document.getElementById('p-prev').textContent = prevVisit || "—";
 
-    // データの永続化
+    // 集計用保存
     allReservations.push({ date: dateVal, price: price });
     localStorage.setItem('reservations_list', JSON.stringify(allReservations));
-    
-    // 集計を再計算
     updateSummary();
 
-    // 画面を自動スクロールして確認しやすくする
+    // プレビューへ移動
     document.getElementById('receipt-print-area').scrollIntoView({ behavior: 'smooth' });
 }
