@@ -72,6 +72,17 @@ input[type="text"], input[type="number"], input[type="date"], input[type="tel"],
 .row-inputs input { flex: 1; }
 .row-inputs button { padding: 0 15px; background: #34495e; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 
+/* 3列レイアウト用のクラス */
+.row-inputs-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
+
 .girl-list-wrapper {
     max-height: 100px;
     overflow-y: auto;
@@ -126,22 +137,23 @@ button.btn-print {
 }
 
 /* ==========================================================================
-   🖨️ 印刷＆レシートデザイン構造 (EPSON TM-T88Ⅶ 80mmロール紙用)
+   🖨️ 印刷＆レシートデザイン構造 (EPSON TM-T88Ⅶ 80mm幅・縦100mm専用)
    幅: 80mm (実印刷可能幅 約72mm / 272px)
-   高さ目標: 125mm (約472px) 内に収まるように極限まで無駄を削った設計
+   高さ: 100mm (約378px) 内に完全ジャストフィット
+   文字サイズを顧客区分（大きく見やすい太字）基準に統一
    ========================================================================== */
 .receipt-container {
-    width: 272px;         /* 80mm幅の標準印字ピクセルサイズ */
-    height: 472px;        /* 125mmの高さ制限 */
+    width: 272px;         /* 80mm幅 */
+    height: 378px;        /* 100mm高 */
     background: #fff;
-    border: 2px solid #000; /* 全体外枠 */
+    border: 2px solid #000;
     box-sizing: border-box;
     margin: 20px auto;
     padding: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    font-family: monospace; /* 等幅フォントで綺麗に整列 */
+    font-family: sans-serif;
 }
 
 /* 各段の共通ルール */
@@ -153,87 +165,80 @@ button.btn-print {
 .border-bottom { border-bottom: 1.5px solid #000; }
 .border-right { border-right: 1.5px solid #000; }
 
-/* 高さの割り振りと各段の比率 */
-.r-row:nth-child(1) { height: 50px; } /* 日付 | 顧客指名 | 女の子 */
-.r-row:nth-child(2) { height: 52px; } /* コース | 料金 | 予約時刻 */
-.r-row:nth-child(3) { height: 50px; } /* 顧客名 | 案内区分 | 部屋番 */
-.r-row:nth-child(4) { height: 36px; } /* 電話番号 */
+/* 縦100mm(378px)枠内の厳密な高さ配分 */
+.row-h1 { height: 63px; } /* 日付 | 顧客指名 | 女の子 */
+.row-h2 { height: 63px; } /* コース分数 | 料金 | 予約時刻 */
+.row-h3 { height: 63px; } /* 顧客名 | 案内時間区分 | ホテル部屋番 */
+.row-h4 { height: 50px; } /* 電話番号 */
+.row-h5 { height: 70px; } /* 待ち合わせ場所 | OP */
+.row-h6 { height: 69px; } /* デリ詳細 | 前回 */
 
-/* 幅の比率 */
+/* 横幅の比率 */
 .w-33 { width: 33.33%; }
 .w-34 { width: 33.34%; }
 .w-66 { width: 66.66%; }
 .w-100 { width: 100%; }
 
-/* セル内のテキスト配置 */
+/* セル内の配置 */
 .r-col {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 2px;
+    padding: 2px 3px;
     box-sizing: border-box;
     overflow: hidden;
 }
 
-/* ラベル設定（項目名） */
+/* 項目ラベル(小さな補助文字) */
 .r-label {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: bold;
-    transform: scale(0.9);
-    transform-origin: left top;
     height: 10px;
     line-height: 10px;
-    border-bottom: 0.5px dashed #666;
+    border-bottom: 0.5px dashed #444;
     margin-bottom: 2px;
     white-space: nowrap;
+    color: #333;
 }
 
-/* 値の設定 */
+/* 各データ値の文字サイズ：小さかった文字を「顧客区分」と同等の大きく見やすい太字に統一 */
 .r-val {
-    font-size: 12px;
+    font-size: 14px;      /* 顧客区分サイズの読みやすい大文字に統一 */
     text-align: center;
-    font-weight: normal;
-    white-space: nowrap;
+    font-weight: bold;    /* クッキリ見やすい太字 */
+    color: #000;
+    white-space: normal;  /* はみ出し時に折り返す */
+    word-break: break-all;
     overflow: hidden;
-    text-overflow: ellipsis;
     line-height: 1.2;
 }
 
-/* 特定項目の強調フォントサイズ */
-.r-val.bold { font-weight: bold; font-size: 13px; }
-.r-val.emphasis { font-weight: bold; font-size: 15px; color: #000; }
-.r-val.font-mid { font-size: 14px; font-weight: bold; text-align: left; padding-left: 2px; white-space: normal; }
-.r-val.font-large { font-size: 18px; font-weight: bold; text-align: center; letter-spacing: 1px; }
-
-/* 複数行・注意書き用 */
-.r-val.multi-line {
-    font-size: 9px;
-    white-space: normal;
-    text-align: left;
-    line-height: 1.1;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
+/* 特大文字（電話番号など視認性を最大化する場所） */
+.r-val.font-large {
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
 }
+
+/* 細かな補足テキスト (OPや前回情報など文字数が多いもの向け) */
 .r-val.small-text {
-    font-size: 9px;
+    font-size: 10px;
+    font-weight: bold;
     white-space: normal;
     text-align: left;
     line-height: 1.1;
 }
 
-/* 確認電話用 (9:00) などの記載 */
+/* 予約時刻下の確認電話時刻 */
 .r-sub-val {
-    font-size: 11px;
+    font-size: 12px;
     text-align: center;
     font-weight: bold;
-    line-height: 1;
+    line-height: 1.1;
     margin-top: 1px;
 }
 
-/* ==========================================================================
-   印刷時の命令（不要なUI要素を隠し、レシートのみを実寸大出力）
-   ========================================================================== */
+/* 印刷用命令 */
 @media print {
     body {
         background: none;
