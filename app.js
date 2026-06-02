@@ -29,7 +29,6 @@ const DEFAULT_GIRLS = [
 let girlsData = [];
 let allReservations = [];
 
-// データの安全な読み込み
 try {
     allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
 } catch(e) {
@@ -61,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateLineMessagePreview();
     }));
 
-    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'customer-class', 'hotel-room'];
+    // 文字入力系（前回日付を含む）もLINE文章にリアルタイム連動
+    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'customer-class', 'hotel-room', 'prev-visit'];
     textEvents.forEach(id => document.getElementById(id).addEventListener('input', updateLineMessagePreview));
     document.getElementById('options-container').addEventListener('change', updateLineMessagePreview);
 
@@ -85,7 +85,6 @@ function checkAuth() {
 
 function handleLogin(e) {
     e.preventDefault();
-    // スマホでの入力ミス（末尾の空白）を無視して照合する .trim() を追加
     const inputId = document.getElementById('login-id').value.trim();
     const inputPass = document.getElementById('login-pass').value.trim();
 
@@ -98,13 +97,11 @@ function handleLogin(e) {
     }
 }
 
-// 🆘 緊急リセット処理
 function handleEmergencyReset() {
     if(confirm("IDとパスワードを初期状態 (admin / admin) にリセットしますか？\n※予約データや女の子リストは消えません。")) {
         localStorage.setItem('auth_id', 'admin');
         localStorage.setItem('auth_pass', 'admin');
-        savedId = 'admin';
-        savedPass = 'admin';
+        savedId = 'admin'; savedPass = 'admin';
         document.getElementById('login-id').value = '';
         document.getElementById('login-pass').value = '';
         alert("リセットが完了しました。\n\nID: admin\nパスワード: admin\n\nでログインしてください。");
@@ -256,11 +253,17 @@ function updateLineMessagePreview() {
     const hotelSelect = document.getElementById('hotel-select').value;
     const hotelRoom = document.getElementById('hotel-room').value.trim();
     const transportFee = Number(document.getElementById('transport-fee').value || 0);
+    const prevVisit = document.getElementById('prev-visit').value.trim();
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
+    // 指名区分の生成 (本指名かつ前回の入力がある場合、(前回〇〇)を付与)
     let nomStr = {'F': 'フリー', 'N': 'ネット指名', '本': '本指名'}[nominationClass] || "";
+    if (nominationClass === '本' && prevVisit) {
+        nomStr += `(前回${prevVisit})`;
+    }
+
     let custStr = (custClass === '新') ? (custName ? `新規${custName}様` : "新規様") : (custName ? `会員${custName}様` : "会員様");
 
     let placeLine = (meetingPlace !== 'その他') ? `${meetingPlace}待ち合わせ\n` : "";
@@ -272,9 +275,27 @@ function updateLineMessagePreview() {
     let block1 = (placeLine || detailLine || deliveryRoomLine) ? `${placeLine}${detailLine}${deliveryRoomLine}\n` : "\n";
 
     let opLine = selectedOps.length > 0 ? `OP：${selectedOps.join('、')}\n\n` : "";
-    let hotelLine = (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') ? `ホテル${hotelSelect}でお願いします\n` : "";
+    
+    // ✨ ホテル代の計算とテキスト生成
+    let hotelPriceStr = "";
+    let hotelLine = "";
+    if (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') {
+        // ホテル代テーブル (180分まで定義)
+        const HOTEL_PRICES = { 60: 2300, 75: 2500, 90: 2600, 120: 2900, 150: 3200, 180: 3500 };
+        const hPrice = HOTEL_PRICES[courseMins];
+        
+        if (hPrice) {
+            hotelPriceStr = `(ホテル代${hPrice}円)`;
+        }
+        
+        hotelLine = `ホテル${hotelSelect}でお願いします\n`;
+        // ステラ以外の場合は差額アナウンスを追加
+        if (hotelSelect !== 'ステラ') {
+            hotelLine += `ホテル代差額分はお客様払いです。\n`;
+        }
+    }
 
-    const message = `ご予約詳細です！\n\n${startTime}～\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円\n\n${opLine}${hotelLine}よろしくお願いいたします\n\n担当者：○○`;
+    const message = `ご予約詳細です！\n\n${startTime}～\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いいたします\n\n担当者：○○`;
     document.getElementById('line-message-text').value = message;
 }
 
