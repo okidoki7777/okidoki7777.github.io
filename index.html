@@ -14,13 +14,15 @@
             <form id="login-form">
                 <div class="form-group">
                     <label>ログインID</label>
-                    <input type="text" id="login-id" placeholder="IDを入力" required>
+                    <input type="text" id="login-id" placeholder="IDを入力" required autocapitalize="off" autocorrect="off">
                 </div>
                 <div class="form-group">
                     <label>パスワード</label>
-                    <input type="password" id="login-pass" placeholder="パスワードを入力" required>
+                    <input type="password" id="login-pass" placeholder="パスワードを入力" required autocapitalize="off">
                 </div>
                 <button type="submit" class="btn-primary" style="margin-top: 10px;">ログイン</button>
+                
+                <button type="button" id="btn-emergency-reset" class="btn-print" style="margin-top: 15px; background: #7f8c8d; font-size: 0.8rem; padding: 8px;">ID/PASSを初期化 (adminに戻す)</button>
             </form>
         </div>
     </div>
@@ -35,11 +37,11 @@
                 <div class="summary-content auth-content">
                     <div class="form-group">
                         <label>新しいID</label>
-                        <input type="text" id="new-auth-id" placeholder="新しいIDを入力">
+                        <input type="text" id="new-auth-id" placeholder="新しいIDを入力" autocapitalize="off">
                     </div>
                     <div class="form-group">
                         <label>新しいパスワード</label>
-                        <input type="password" id="new-auth-pass" placeholder="新しいパスワードを入力">
+                        <input type="password" id="new-auth-pass" placeholder="新しいパスワードを入力" autocapitalize="off">
                     </div>
                     <div class="row-inputs-3">
                         <button type="button" id="btn-update-auth" class="btn-primary" style="background:#8e44ad;">ID/PASSを変更</button>
@@ -255,3 +257,18 @@
                 <div class="r-col w-66 border-right"><span class="r-label">待ち合わせ場所</span><span class="r-val" id="p-location"></span></div>
                 <div class="r-col w-34"><span class="r-label">OP</span><span class="r-val small-text" id="p-options"></span></div>
             </div>
+            <div class="r-row row-h6">
+                <div class="r-col w-66 border-right"><span class="r-label">デリ詳細・その他・特徴</span><span class="r-val" id="p-details"></span></div>
+                <div class="r-col w-34"><span class="r-label">前回</span><span class="r-val small-text" id="p-prev"></span></div>
+            </div>
+        </div>
+
+        <div class="container no-print" style="margin-top: 10px; margin-bottom: 50px;">
+            <button type="button" onclick="window.print()" class="btn-print">この内容でレシート印刷を実行</button>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
