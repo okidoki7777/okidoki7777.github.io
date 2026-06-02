@@ -1,6 +1,6 @@
 // 🔐 アカウント情報初期化
-let savedId = localStorage.getItem('auth_id') || 'admin777';
-let savedPass = localStorage.getItem('auth_pass') || 'admin777';
+let savedId = localStorage.getItem('auth_id') || 'admin';
+let savedPass = localStorage.getItem('auth_pass') || 'admin';
 
 const BASE_PRICES = {
     60: 10000, 75: 13000, 90: 15000, 120: 21000, 150: 27000,
