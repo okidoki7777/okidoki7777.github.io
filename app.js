@@ -7,7 +7,7 @@ const BASE_PRICES = {
     180: 33000, 240: 45000, 300: 57000, 360: 69000
 };
 
-// 延長分数上限600分までの自動生成ロジック (30分刻み・6000円単位)
+// 延長分数上限600分 (30分刻み・6000円単位)
 const EXTENSION_PRICES = {};
 for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
@@ -17,7 +17,6 @@ const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛
 const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "デリヘルじゃぱん": "デリじゃ", "HP": "HP", "その他": "その他" };
 const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
 
-// ✨ 指定された女の子60名の初期データ
 const DEFAULT_GIRLS = [
     "るな","あいな","ほまれ","ちずる","ふみか","みれい","かほ","そら","めい","なな",
     "りょうこ","いずみ","けい","まりえ","かおり","おと","なぎさ","みどり","さなえ","せいな",
@@ -28,7 +27,14 @@ const DEFAULT_GIRLS = [
 ];
 
 let girlsData = [];
-let allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
+let allReservations = [];
+
+// データの安全な読み込み
+try {
+    allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
+} catch(e) {
+    allReservations = [];
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -41,13 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // イベントリスナー
     document.getElementById('login-form').addEventListener('submit', handleLogin);
+    document.getElementById('btn-emergency-reset').addEventListener('click', handleEmergencyReset);
     document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
     document.getElementById('customer-class').addEventListener('change', toggleMediaVisibility);
     document.getElementById('meeting-place-select').addEventListener('change', toggleHotelVisibility);
     
-    // リアルタイム再計算・LINE文章連動
+    // リアルタイム再計算
     const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select'];
     recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
         calculateTotalPrice();
@@ -68,23 +75,42 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLineMessagePreview();
 });
 
-// --- 🔐 認証 ---
+// --- 🔐 認証関連 ---
 function checkAuth() {
     if (sessionStorage.getItem('isLoggedIn') === 'true') {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-wrapper').classList.remove('hidden');
     }
 }
+
 function handleLogin(e) {
     e.preventDefault();
-    if (document.getElementById('login-id').value === savedId && document.getElementById('login-pass').value === savedPass) {
+    // スマホでの入力ミス（末尾の空白）を無視して照合する .trim() を追加
+    const inputId = document.getElementById('login-id').value.trim();
+    const inputPass = document.getElementById('login-pass').value.trim();
+
+    if (inputId === savedId && inputPass === savedPass) {
         sessionStorage.setItem('isLoggedIn', 'true');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-wrapper').classList.remove('hidden');
     } else {
-        alert("IDまたはパスワードが間違っています。");
+        alert("IDまたはパスワードが間違っています。\n\n大文字・小文字の違いや、文字の最後に空白が入っていないか確認してください。");
     }
 }
+
+// 🆘 緊急リセット処理
+function handleEmergencyReset() {
+    if(confirm("IDとパスワードを初期状態 (admin / admin) にリセットしますか？\n※予約データや女の子リストは消えません。")) {
+        localStorage.setItem('auth_id', 'admin');
+        localStorage.setItem('auth_pass', 'admin');
+        savedId = 'admin';
+        savedPass = 'admin';
+        document.getElementById('login-id').value = '';
+        document.getElementById('login-pass').value = '';
+        alert("リセットが完了しました。\n\nID: admin\nパスワード: admin\n\nでログインしてください。");
+    }
+}
+
 function handleAuthUpdate() {
     const newId = document.getElementById('new-auth-id').value.trim();
     const newPass = document.getElementById('new-auth-pass').value.trim();
@@ -96,6 +122,7 @@ function handleAuthUpdate() {
         alert("更新しました！");
     }
 }
+
 function handleLogout() {
     if (confirm("ログアウトしますか？")) {
         sessionStorage.removeItem('isLoggedIn');
@@ -107,13 +134,16 @@ function handleLogout() {
 
 // --- 初期データ処理 ---
 function initGirlsData() {
-    // 確実にデータを入れ替えるために新しい識別バージョン(v6_0)を設定
-    if (localStorage.getItem('app_version') !== 'v6_0') {
+    if (localStorage.getItem('app_version') !== 'v6_1') {
         girlsData = DEFAULT_GIRLS.sort((a, b) => a.localeCompare(b, 'ja'));
         localStorage.setItem('girls_list', JSON.stringify(girlsData));
-        localStorage.setItem('app_version', 'v6_0');
+        localStorage.setItem('app_version', 'v6_1');
     } else {
-        girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
+        try {
+            girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
+        } catch(e) {
+            girlsData = DEFAULT_GIRLS;
+        }
     }
 }
 
@@ -150,7 +180,6 @@ function initFormSelects() {
 function toggleMediaVisibility() {
     document.getElementById('media-group').classList.toggle('hidden', document.getElementById('customer-class').value !== '新');
 }
-
 function toggleHotelVisibility() {
     document.getElementById('hotel-group').classList.toggle('hidden', document.getElementById('meeting-place-select').value === 'その他');
 }
@@ -187,7 +216,6 @@ function addNewGirl() {
         renderGirls();
     }
 }
-
 function deleteGirl(index) {
     if (confirm("削除しますか？")) { girlsData.splice(index, 1); renderGirls(); }
 }
@@ -211,13 +239,12 @@ function updateSummary() {
     document.getElementById('total-sales').textContent = totalSales.toLocaleString();
 }
 
-// 💬 LINE文章の自動生成ロジック
+// 💬 LINE文章の自動生成
 function updateLineMessagePreview() {
     const startTime = document.getElementById('start-time').value;
     const meetingPlace = document.getElementById('meeting-place-select').value;
     const deliveryDetails = document.getElementById('delivery-details').value;
     
-    // コース分数 ＋ 延長分数 = 合計分数
     const courseMins = Number(document.getElementById('course-time').value);
     const extMins = Number(document.getElementById('extension-time').value || 0);
     const totalMins = courseMins + extMins;
@@ -234,49 +261,27 @@ function updateLineMessagePreview() {
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
     let nomStr = {'F': 'フリー', 'N': 'ネット指名', '本': '本指名'}[nominationClass] || "";
-    
-    let custStr = "";
-    if (custClass === '新') {
-        custStr = custName ? `新規${custName}様` : "新規様";
-    } else {
-        custStr = custName ? `会員${custName}様` : "会員様";
-    }
+    let custStr = (custClass === '新') ? (custName ? `新規${custName}様` : "新規様") : (custName ? `会員${custName}様` : "会員様");
 
     let placeLine = (meetingPlace !== 'その他') ? `${meetingPlace}待ち合わせ\n` : "";
     let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
     
-    // 交通費選択（デリバリー）かつ、ホテル名・部屋番号に入力がある場合
+    // 交通費選択（デリバリー）の場合、ホテル名・部屋番号をデリ詳細の下に追加
     let deliveryRoomLine = (transportFee > 0 && hotelRoom) ? `${hotelRoom}\n` : "";
 
-    // 第1ブロック（待ち合わせ、デリ詳細、ホテル名部屋番）
     let block1 = (placeLine || detailLine || deliveryRoomLine) ? `${placeLine}${detailLine}${deliveryRoomLine}\n` : "\n";
 
     let opLine = selectedOps.length > 0 ? `OP：${selectedOps.join('、')}\n\n` : "";
     let hotelLine = (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') ? `ホテル${hotelSelect}でお願いします\n` : "";
 
-    const message = `ご予約詳細です！
-
-${startTime}～
-
-${block1}${totalMins}分${nomStr}
-${custStr}
-料金${price}円
-
-${opLine}${hotelLine}よろしくお願いいたします
-
-担当者：○○`;
-
+    const message = `ご予約詳細です！\n\n${startTime}～\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円\n\n${opLine}${hotelLine}よろしくお願いいたします\n\n担当者：○○`;
     document.getElementById('line-message-text').value = message;
 }
 
 function copyLineMessage() {
     const text = document.getElementById('line-message-text').value;
     if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-        alert("LINE文章をコピーしました！");
-    }).catch(err => {
-        alert("コピーに失敗しました: " + err);
-    });
+    navigator.clipboard.writeText(text).then(() => { alert("LINE文章をコピーしました！"); }).catch(err => { alert("コピー失敗: " + err); });
 }
 
 function handleFormSubmit(e) {
@@ -309,7 +314,6 @@ function handleFormSubmit(e) {
 
     let locationStr = (meetingPlace === 'その他') ? "" : meetingPlace;
     
-    // 🗓️ 日付への曜日追加処理
     let formattedDate = "";
     if (dateVal) {
         const d = new Date(dateVal);
