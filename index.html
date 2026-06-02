@@ -8,196 +8,235 @@
 </head>
 <body>
 
-    <div class="container no-print">
-        <h1>予約管理システム</h1>
-
-        <details class="summary-box" open>
-            <summary>📊 本日の集計・登録データ (タップして開閉)</summary>
-            <div class="summary-content">
-                <div class="summary-item">本日の予約数: <span id="today-count">0</span> 件</div>
-                <div class="summary-item">本日の総売上: <span id="today-sales">0</span> 円</div>
-                <div class="summary-item">登録全予約数: <span id="total-count">0</span> 件</div>
-                <div class="summary-item">登録総売上: <span id="total-sales">0</span> 円</div>
-            </div>
-        </details>
-
-        <section class="admin-section">
-            <h3>👩 女の子の管理</h3>
-            <div class="form-group row-inputs">
-                <input type="text" id="new-girl-name" placeholder="女の子の名前を入力">
-                <button type="button" id="add-girl-btn">追加</button>
-            </div>
-            <div class="girl-list-wrapper">
-                <ul id="girl-list"></ul>
-            </div>
-        </section>
-
-        <form id="reservation-form">
-            <h3>📝 予約情報の入力</h3>
-
-            <div class="form-group">
-                <label>日付</label>
-                <input type="date" id="reserve-date" required>
-            </div>
-
-            <div class="form-group row-inputs-3">
-                <div>
-                    <label>顧客区分</label>
-                    <select id="customer-class" required>
-                        <option value="R">R (リピーター)</option>
-                        <option value="新">新 (新規)</option>
-                    </select>
+    <div id="login-screen" class="login-container no-print">
+        <div class="login-box">
+            <h2>🔒 システムログイン</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label>ログインID</label>
+                    <input type="text" id="login-id" placeholder="IDを入力" required>
                 </div>
-                <div id="media-group" class="hidden">
-                    <label>広告媒体</label>
-                    <select id="media-select">
-                        <option value="シティヘヴン">シティヘヴン</option>
-                        <option value="ぴゅあらば">ぴゅあらば</option>
-                        <option value="デリヘルタウン">デリヘルタウン</option>
-                        <option value="口コミ情報局">口コミ情報局</option>
-                        <option value="風俗じゃぱん">風俗じゃぱん</option>
-                        <option value="デリヘルじゃぱん">デリヘルじゃぱん</option>
-                        <option value="HP">HP</option>
-                        <option value="その他">その他</option>
-                    </select>
+                <div class="form-group">
+                    <label>パスワード</label>
+                    <input type="password" id="login-pass" placeholder="パスワードを入力" required>
                 </div>
-                <div>
-                    <label>指名区分</label>
-                    <select id="nomination-class" required>
-                        <option value="F">F (フリー)</option>
-                        <option value="N">N (ネット指名)</option>
-                        <option value="本">本 (本指名 +1,000円)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>女の子</label>
-                <select id="girl-select" required>
-                    <option value="">-- 女の子を選択してください --</option>
-                </select>
-            </div>
-
-            <div class="form-group row-inputs-3">
-                <div>
-                    <label>コース時間</label>
-                    <select id="course-time" required></select>
-                </div>
-                <div>
-                    <label>延長時間</label>
-                    <select id="extension-time"></select>
-                </div>
-                <div>
-                    <label>交通費</label>
-                    <select id="transport-fee"></select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>料金 (自動連動・手動微調整可能)</label>
-                <input type="number" id="total-price" min="0" required>
-            </div>
-
-            <div class="form-group">
-                <label>開始時刻 (5分単位、翌朝30時まで)</label>
-                <select id="start-time" required></select>
-            </div>
-
-            <div class="form-group">
-                <label>顧客名</label>
-                <input type="text" id="customer-name" placeholder="例: やまだ">
-            </div>
-
-            <div class="form-group">
-                <label>案内時間区分</label>
-                <select id="guide-status">
-                    <option value="">未選択</option>
-                    <option value="着">着</option>
-                    <option value="発">発</option>
-                    <option value="丁度">丁度</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>ホテル部屋番 (空欄時は空白出力)</label>
-                <input type="text" id="hotel-room" placeholder="例: 301">
-            </div>
-
-            <div class="form-group">
-                <label>電話番号</label>
-                <input type="tel" id="phone-number" placeholder="例: 090-XXXX-XXXX">
-            </div>
-
-            <div class="form-group">
-                <label>待ち合わせ場所</label>
-                <select id="meeting-place-select" required>
-                    <option value="FM">FM</option>
-                    <option value="ステラP">ステラP</option>
-                    <option value="AI P">AI P</option>
-                    <option value="アストン前">アストン前</option>
-                    <option value="三国待ち合わせ">三国待ち合わせ</option>
-                    <option value="石津待ち合わせ">石津待ち合わせ</option>
-                    <option value="堺IC待ち合わせ">堺IC待ち合わせ</option>
-                    <option value="その他">その他 (空白出力)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>デリ詳細</label>
-                <input type="text" id="delivery-details" placeholder="例: 堺区デリ 前店の本指名">
-            </div>
-
-            <div class="form-group">
-                <label>前回</label>
-                <input type="text" id="prev-visit" placeholder="例: 2025年5月31日">
-            </div>
-
-            <div class="form-group">
-                <label>無料オプション (OP)</label>
-                <div class="checkbox-grid" id="options-container"></div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn-primary">予約を登録・印刷プレビューに反映</button>
-            </div>
-        </form>
-    </div>
-
-    <div id="receipt-print-area" class="receipt-container">
-        <div class="r-row border-bottom row-h1">
-            <div class="r-col w-33 border-right"><span class="r-label">日付</span><span class="r-val" id="p-date"></span></div>
-            <div class="r-col w-34 border-right"><span class="r-label">顧客・指名</span><span class="r-val" id="p-cust-type"></span></div>
-            <div class="r-col w-33"><span class="r-label">女の子</span><span class="r-val" id="p-girl"></span></div>
-        </div>
-        <div class="r-row border-bottom row-h2">
-            <div class="r-col w-33 border-right"><span class="r-label">コース分数</span><span class="r-val" id="p-duration"></span></div>
-            <div class="r-col w-34 border-right"><span class="r-label">料金</span><span class="r-val" id="p-price"></span></div>
-            <div class="r-col w-33">
-                <span class="r-label">予約時刻</span>
-                <span class="r-val" id="p-time"></span>
-                <span class="r-sub-val" id="p-confirm-time"></span>
-            </div>
-        </div>
-        <div class="r-row border-bottom row-h3">
-            <div class="r-col w-33 border-right"><span class="r-label">顧客名</span><span class="r-val" id="p-cust-name"></span></div>
-            <div class="r-col w-34 border-right"><span class="r-label">案内時間区分</span><span class="r-val" id="p-guide"></span></div>
-            <div class="r-col w-33"><span class="r-label">ホテル部屋番</span><span class="r-val small-text" id="p-room"></span></div>
-        </div>
-        <div class="r-row border-bottom row-h4">
-            <div class="r-col w-100"><span class="r-label">電話番号</span><span class="r-val font-large" id="p-phone"></span></div>
-        </div>
-        <div class="r-row border-bottom row-h5">
-            <div class="r-col w-66 border-right"><span class="r-label">待ち合わせ場所</span><span class="r-val" id="p-location"></span></div>
-            <div class="r-col w-34"><span class="r-label">OP</span><span class="r-val small-text" id="p-options"></span></div>
-        </div>
-        <div class="r-row row-h6">
-            <div class="r-col w-66 border-right"><span class="r-label">デリ詳細</span><span class="r-val" id="p-details"></span></div>
-            <div class="r-col w-34"><span class="r-label">前回</span><span class="r-val small-text" id="p-prev"></span></div>
+                <button type="submit" class="btn-primary" style="margin-top: 10px;">ログイン</button>
+            </form>
         </div>
     </div>
 
-    <div class="container no-print" style="margin-top: 10px; margin-bottom: 50px;">
-        <button type="button" onclick="window.print()" class="btn-print">この内容でレシート印刷を実行</button>
+    <div id="app-wrapper" class="hidden">
+        
+        <div class="container no-print">
+            <h1>予約管理システム</h1>
+
+            <details class="summary-box admin-settings" open>
+                <summary>🔒 セキュリティ・アカウント設定 (タップで開閉)</summary>
+                <div class="summary-content auth-content">
+                    <div class="form-group">
+                        <label>新しいID</label>
+                        <input type="text" id="new-auth-id" placeholder="新しいIDを入力">
+                    </div>
+                    <div class="form-group">
+                        <label>新しいパスワード</label>
+                        <input type="password" id="new-auth-pass" placeholder="新しいパスワードを入力">
+                    </div>
+                    <div class="row-inputs-3">
+                        <button type="button" id="btn-update-auth" class="btn-primary" style="background:#8e44ad;">ID/PASSを変更</button>
+                        <button type="button" id="btn-logout" class="btn-print" style="background:#e74c3c;">ログアウト</button>
+                    </div>
+                </div>
+            </details>
+
+            <details class="summary-box">
+                <summary>📊 本日の集計・登録データ (タップで開閉)</summary>
+                <div class="summary-content">
+                    <div class="summary-item">本日の予約数: <span id="today-count">0</span> 件</div>
+                    <div class="summary-item">本日の総売上: <span id="today-sales">0</span> 円</div>
+                    <div class="summary-item">登録全予約数: <span id="total-count">0</span> 件</div>
+                    <div class="summary-item">登録総売上: <span id="total-sales">0</span> 円</div>
+                </div>
+            </details>
+
+            <section class="admin-section">
+                <h3>👩 女の子の管理</h3>
+                <div class="form-group row-inputs">
+                    <input type="text" id="new-girl-name" placeholder="女の子の名前を入力">
+                    <button type="button" id="add-girl-btn">追加</button>
+                </div>
+                <div class="girl-list-wrapper">
+                    <ul id="girl-list"></ul>
+                </div>
+            </section>
+
+            <form id="reservation-form">
+                <h3>📝 予約情報の入力</h3>
+
+                <div class="form-group">
+                    <label>日付</label>
+                    <input type="date" id="reserve-date" required>
+                </div>
+
+                <div class="form-group row-inputs-3">
+                    <div>
+                        <label>顧客区分</label>
+                        <select id="customer-class" required>
+                            <option value="R">R (リピーター)</option>
+                            <option value="新">新 (新規)</option>
+                        </select>
+                    </div>
+                    <div id="media-group" class="hidden">
+                        <label>広告媒体</label>
+                        <select id="media-select">
+                            <option value="シティヘヴン">シティヘヴン</option>
+                            <option value="ぴゅあらば">ぴゅあらば</option>
+                            <option value="デリヘルタウン">デリヘルタウン</option>
+                            <option value="口コミ情報局">口コミ情報局</option>
+                            <option value="風俗じゃぱん">風俗じゃぱん</option>
+                            <option value="デリヘルじゃぱん">デリヘルじゃぱん</option>
+                            <option value="HP">HP</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>指名区分</label>
+                        <select id="nomination-class" required>
+                            <option value="F">F (フリー)</option>
+                            <option value="N">N (ネット指名)</option>
+                            <option value="本">本 (本指名 +1,000円)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>女の子</label>
+                    <select id="girl-select" required>
+                        <option value="">-- 女の子を選択してください --</option>
+                    </select>
+                </div>
+
+                <div class="form-group row-inputs-3">
+                    <div>
+                        <label>コース時間</label>
+                        <select id="course-time" required></select>
+                    </div>
+                    <div>
+                        <label>延長時間</label>
+                        <select id="extension-time"></select>
+                    </div>
+                    <div>
+                        <label>交通費</label>
+                        <select id="transport-fee"></select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>料金 (自動連動・手動微調整可能)</label>
+                    <input type="number" id="total-price" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>開始時刻 (5分単位、翌朝30時まで)</label>
+                    <select id="start-time" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label>顧客名</label>
+                    <input type="text" id="customer-name" placeholder="例: やまだ">
+                </div>
+
+                <div class="form-group">
+                    <label>案内時間区分</label>
+                    <select id="guide-status">
+                        <option value="">未選択</option>
+                        <option value="着">着</option>
+                        <option value="発">発</option>
+                        <option value="丁度">丁度</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>ホテル部屋番 (空欄時は空白出力)</label>
+                    <input type="text" id="hotel-room" placeholder="例: 301">
+                </div>
+
+                <div class="form-group">
+                    <label>電話番号</label>
+                    <input type="tel" id="phone-number" placeholder="例: 090-XXXX-XXXX">
+                </div>
+
+                <div class="form-group">
+                    <label>待ち合わせ場所</label>
+                    <select id="meeting-place-select" required>
+                        <option value="FM">FM</option>
+                        <option value="ステラP">ステラP</option>
+                        <option value="AI P">AI P</option>
+                        <option value="アストン前">アストン前</option>
+                        <option value="三国待ち合わせ">三国待ち合わせ</option>
+                        <option value="石津待ち合わせ">石津待ち合わせ</option>
+                        <option value="堺IC待ち合わせ">堺IC待ち合わせ</option>
+                        <option value="その他">その他 (空白出力)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>デリ詳細</label>
+                    <input type="text" id="delivery-details" placeholder="例: 堺区デリ 前店の本指名">
+                </div>
+
+                <div class="form-group">
+                    <label>前回</label>
+                    <input type="text" id="prev-visit" placeholder="例: 2025年5月31日">
+                </div>
+
+                <div class="form-group">
+                    <label>無料オプション (OP)</label>
+                    <div class="checkbox-grid" id="options-container"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">予約を登録・印刷プレビューに反映</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="receipt-print-area" class="receipt-container">
+            <div class="r-row border-bottom row-h1">
+                <div class="r-col w-33 border-right"><span class="r-label">日付</span><span class="r-val" id="p-date"></span></div>
+                <div class="r-col w-34 border-right"><span class="r-label">顧客・指名</span><span class="r-val" id="p-cust-type"></span></div>
+                <div class="r-col w-33"><span class="r-label">女の子</span><span class="r-val" id="p-girl"></span></div>
+            </div>
+            <div class="r-row border-bottom row-h2">
+                <div class="r-col w-33 border-right"><span class="r-label">コース分数</span><span class="r-val" id="p-duration"></span></div>
+                <div class="r-col w-34 border-right"><span class="r-label">料金</span><span class="r-val" id="p-price"></span></div>
+                <div class="r-col w-33">
+                    <span class="r-label">予約時刻</span>
+                    <span class="r-val" id="p-time"></span>
+                    <span class="r-sub-val" id="p-confirm-time"></span>
+                </div>
+            </div>
+            <div class="r-row border-bottom row-h3">
+                <div class="r-col w-33 border-right"><span class="r-label">顧客名</span><span class="r-val" id="p-cust-name"></span></div>
+                <div class="r-col w-34 border-right"><span class="r-label">案内時間区分</span><span class="r-val" id="p-guide"></span></div>
+                <div class="r-col w-33"><span class="r-label">ホテル部屋番</span><span class="r-val small-text" id="p-room"></span></div>
+            </div>
+            <div class="r-row border-bottom row-h4">
+                <div class="r-col w-100"><span class="r-label">電話番号</span><span class="r-val font-large" id="p-phone"></span></div>
+            </div>
+            <div class="r-row border-bottom row-h5">
+                <div class="r-col w-66 border-right"><span class="r-label">待ち合わせ場所</span><span class="r-val" id="p-location"></span></div>
+                <div class="r-col w-34"><span class="r-label">OP</span><span class="r-val small-text" id="p-options"></span></div>
+            </div>
+            <div class="r-row row-h6">
+                <div class="r-col w-66 border-right"><span class="r-label">デリ詳細</span><span class="r-val" id="p-details"></span></div>
+                <div class="r-col w-34"><span class="r-label">前回</span><span class="r-val small-text" id="p-prev"></span></div>
+            </div>
+        </div>
+
+        <div class="container no-print" style="margin-top: 10px; margin-bottom: 50px;">
+            <button type="button" onclick="window.print()" class="btn-print">この内容でレシート印刷を実行</button>
+        </div>
+
     </div>
 
     <script src="app.js"></script>
