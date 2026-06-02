@@ -1,39 +1,36 @@
-// 🔐 アカウント情報初期化 (なければ admin / admin)
+// 🔐 アカウント情報初期化
 let savedId = localStorage.getItem('auth_id') || 'admin';
 let savedPass = localStorage.getItem('auth_pass') || 'admin';
 
-// データ設定
 const BASE_PRICES = {
     60: 10000, 75: 13000, 90: 15000, 120: 21000, 150: 27000,
     180: 33000, 240: 45000, 300: 57000, 360: 69000
 };
-const EXTENSION_PRICES = {
-    0: 0, 30: 6000, 60: 12000, 90: 18000, 120: 24000
-};
-const OPTIONS_LIST = [
-    "ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺",
-    "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り",
-    "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパン・ノーブラ"
-];
-const MEDIA_MAPPING = {
-    "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン",
-    "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "デリヘルじゃぱん": "デリじゃ",
-    "HP": "HP", "その他": "その他"
-};
+const EXTENSION_PRICES = { 0: 0, 30: 6000, 60: 12000, 90: 18000, 120: 24000 };
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパン・ノーブラ"];
+const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "デリヘルじゃぱん": "デリじゃ", "HP": "HP", "その他": "その他" };
+const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
 
-let girlsData = JSON.parse(localStorage.getItem('girls_list')) || ["さつき", "みか", "ひなた"];
+// ✨ 指定された女の子60名の初期データ
+const DEFAULT_GIRLS = [
+    "るな","あいな","ほまれ","ちずる","ふみか","みれい","かほ","そら","めい","なな",
+    "りょうこ","いずみ","けい","まりえ","かおり","おと","なぎさ","みどり","さなえ","せいな",
+    "かなみ","れおな","せつな","かえで","みなみ","さくら","ありす","えりか","すい","りさ",
+    "すみれ","らん","かなこ","わかな","りりこ","すずな","ゆい","みお","みちる","としえ",
+    "ゆうか","じゅり","わか","みやび","かなえ","ぼたん","ひとみ","あげは","あおい","さよこ",
+    "なつめ","のぞみ","ひより","かすみ","ゆずは","まいか","れい","ほたる","じゅんこ","ゆりあ"
+];
+
+let girlsData = [];
 let allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 🔐 認証チェック (SessionStorageをチェック)
     checkAuth();
-
-    // 初期化と描画
+    initGirlsData();
     initFormSelects();
     renderGirls();
     updateSummary();
 
-    // 日付を今日に
     document.getElementById('reserve-date').value = new Date().toISOString().split('T')[0];
 
     // イベントリスナー
@@ -42,31 +39,40 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
     document.getElementById('customer-class').addEventListener('change', toggleMediaVisibility);
-    document.getElementById('course-time').addEventListener('change', calculateTotalPrice);
-    document.getElementById('extension-time').addEventListener('change', calculateTotalPrice);
-    document.getElementById('transport-fee').addEventListener('change', calculateTotalPrice);
-    document.getElementById('nomination-class').addEventListener('change', calculateTotalPrice);
+    document.getElementById('meeting-place-select').addEventListener('change', toggleHotelVisibility);
+    
+    // 金額やLINE文章に影響を与える項目の変更検知
+    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select'];
+    recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
+        calculateTotalPrice();
+        updateLineMessagePreview();
+    }));
+
+    // 文字入力系もLINEに連動させる
+    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'customer-class'];
+    textEvents.forEach(id => document.getElementById(id).addEventListener('input', updateLineMessagePreview));
+    document.getElementById('options-container').addEventListener('change', updateLineMessagePreview);
+
     document.getElementById('add-girl-btn').addEventListener('click', addNewGirl);
+    document.getElementById('btn-copy-line').addEventListener('click', copyLineMessage);
     document.getElementById('reservation-form').addEventListener('submit', handleFormSubmit);
 
     calculateTotalPrice();
     toggleMediaVisibility();
+    toggleHotelVisibility();
+    updateLineMessagePreview();
 });
 
-// --- 🔐 認証関連ロジック ---
+// --- 🔐 認証 ---
 function checkAuth() {
     if (sessionStorage.getItem('isLoggedIn') === 'true') {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-wrapper').classList.remove('hidden');
     }
 }
-
 function handleLogin(e) {
     e.preventDefault();
-    const inputId = document.getElementById('login-id').value;
-    const inputPass = document.getElementById('login-pass').value;
-
-    if (inputId === savedId && inputPass === savedPass) {
+    if (document.getElementById('login-id').value === savedId && document.getElementById('login-pass').value === savedPass) {
         sessionStorage.setItem('isLoggedIn', 'true');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-wrapper').classList.remove('hidden');
@@ -74,43 +80,41 @@ function handleLogin(e) {
         alert("IDまたはパスワードが間違っています。");
     }
 }
-
 function handleAuthUpdate() {
     const newId = document.getElementById('new-auth-id').value.trim();
     const newPass = document.getElementById('new-auth-pass').value.trim();
-
-    if (!newId || !newPass) {
-        alert("新しいIDとパスワードを両方入力してください。");
-        return;
-    }
-
-    if (confirm("IDとパスワードを変更しますか？次回のログインから必要になります。")) {
-        localStorage.setItem('auth_id', newId);
-        localStorage.setItem('auth_pass', newPass);
-        savedId = newId;
-        savedPass = newPass;
-        document.getElementById('new-auth-id').value = '';
-        document.getElementById('new-auth-pass').value = '';
-        alert("認証情報を更新しました！");
+    if (!newId || !newPass) return alert("新しいIDとパスワードを両方入力してください。");
+    if (confirm("変更しますか？")) {
+        localStorage.setItem('auth_id', newId); localStorage.setItem('auth_pass', newPass);
+        savedId = newId; savedPass = newPass;
+        document.getElementById('new-auth-id').value = ''; document.getElementById('new-auth-pass').value = '';
+        alert("更新しました！");
     }
 }
-
 function handleLogout() {
     if (confirm("ログアウトしますか？")) {
         sessionStorage.removeItem('isLoggedIn');
         document.getElementById('app-wrapper').classList.add('hidden');
         document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('login-id').value = '';
-        document.getElementById('login-pass').value = '';
+        document.getElementById('login-id').value = ''; document.getElementById('login-pass').value = '';
     }
 }
-// ------------------------------
+
+// --- 初期データ処理 ---
+function initGirlsData() {
+    // V4バージョンチェック（新しい女の子データを強制ロードして50音順に並べる）
+    if (localStorage.getItem('app_version') !== 'v4_1') {
+        girlsData = DEFAULT_GIRLS.sort((a, b) => a.localeCompare(b, 'ja'));
+        localStorage.setItem('girls_list', JSON.stringify(girlsData));
+        localStorage.setItem('app_version', 'v4_1');
+    } else {
+        girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
+    }
+}
 
 function initFormSelects() {
     const courseSelect = document.getElementById('course-time');
-    Object.keys(BASE_PRICES).forEach(mins => {
-        courseSelect.add(new Option(`${mins}分 (${BASE_PRICES[mins].toLocaleString()}円)`, mins));
-    });
+    Object.keys(BASE_PRICES).forEach(mins => courseSelect.add(new Option(`${mins}分 (${BASE_PRICES[mins].toLocaleString()}円)`, mins)));
 
     const extSelect = document.getElementById('extension-time');
     Object.keys(EXTENSION_PRICES).forEach(mins => {
@@ -120,16 +124,13 @@ function initFormSelects() {
 
     const transSelect = document.getElementById('transport-fee');
     transSelect.add(new Option("なし (0円)", 0));
-    for (let f = 1000; f <= 15000; f += 1000) {
-        transSelect.add(new Option(`${f.toLocaleString()}円`, f));
-    }
+    for (let f = 1000; f <= 15000; f += 1000) transSelect.add(new Option(`${f.toLocaleString()}円`, f));
 
     const timeSelect = document.getElementById('start-time');
     for (let h = 9; h <= 30; h++) {
         for (let m = 0; m < 60; m += 5) {
             if (h === 30 && m > 0) break;
-            let timeStr = `${h}:${String(m).padStart(2, '0')}`;
-            timeSelect.add(new Option(timeStr, timeStr));
+            timeSelect.add(new Option(`${h}:${String(m).padStart(2, '0')}`, `${h}:${String(m).padStart(2, '0')}`));
         }
     }
 
@@ -142,33 +143,26 @@ function initFormSelects() {
 }
 
 function toggleMediaVisibility() {
-    const custClass = document.getElementById('customer-class').value;
-    const mediaGroup = document.getElementById('media-group');
-    if (custClass === '新') {
-        mediaGroup.classList.remove('hidden');
-    } else {
-        mediaGroup.classList.add('hidden');
-    }
+    document.getElementById('media-group').classList.toggle('hidden', document.getElementById('customer-class').value !== '新');
+}
+
+function toggleHotelVisibility() {
+    // 待ち合わせ場所が「その他」の場合はホテル選択を非表示にする
+    document.getElementById('hotel-group').classList.toggle('hidden', document.getElementById('meeting-place-select').value === 'その他');
 }
 
 function calculateTotalPrice() {
-    const courseMins = document.getElementById('course-time').value;
-    const extMins = document.getElementById('extension-time').value || 0;
+    const base = BASE_PRICES[document.getElementById('course-time').value] || 0;
+    const ext = EXTENSION_PRICES[document.getElementById('extension-time').value || 0] || 0;
     const transport = Number(document.getElementById('transport-fee').value || 0);
-    const nomination = document.getElementById('nomination-class').value;
-
-    let base = BASE_PRICES[courseMins] || 0;
-    let ext = EXTENSION_PRICES[extMins] || 0;
-    let nominationAdd = (nomination === '本') ? 1000 : 0;
-
+    const nominationAdd = (document.getElementById('nomination-class').value === '本') ? 1000 : 0;
     document.getElementById('total-price').value = base + ext + transport + nominationAdd;
 }
 
 function renderGirls() {
     const listEl = document.getElementById('girl-list');
     const selectEl = document.getElementById('girl-select');
-    listEl.innerHTML = '';
-    selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
+    listEl.innerHTML = ''; selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
 
     girlsData.forEach((girl, index) => {
         let li = document.createElement('li');
@@ -184,57 +178,113 @@ function addNewGirl() {
     const name = input.value.trim();
     if (name && !girlsData.includes(name)) {
         girlsData.push(name);
+        // 新しい女の子を追加時も50音順に再ソート
+        girlsData.sort((a, b) => a.localeCompare(b, 'ja'));
         input.value = '';
         renderGirls();
     }
 }
 
 function deleteGirl(index) {
-    if (confirm("この女の子を削除しますか？")) {
-        girlsData.splice(index, 1);
-        renderGirls();
-    }
+    if (confirm("削除しますか？")) { girlsData.splice(index, 1); renderGirls(); }
 }
 
 function calculateConfirmTime(startTimeStr) {
     let [h, m] = startTimeStr.split(':').map(Number);
-    // 9:30〜9:59の予約は、一律(9:00)にする
     if (h === 9 && m >= 30 && m <= 59) return `(9:00)`;
-    let targetH = h - 1;
-    return `(${targetH}:${String(m).padStart(2, '0')})`;
+    return `(${h - 1}:${String(m).padStart(2, '0')})`;
 }
 
 function updateSummary() {
     const todayStr = new Date().toISOString().split('T')[0];
     let todayCount = 0, todaySales = 0, totalCount = allReservations.length, totalSales = 0;
-
     allReservations.forEach(res => {
         totalSales += Number(res.price);
-        if (res.date === todayStr) {
-            todayCount++;
-            todaySales += Number(res.price);
-        }
+        if (res.date === todayStr) { todayCount++; todaySales += Number(res.price); }
     });
-
     document.getElementById('today-count').textContent = todayCount;
     document.getElementById('today-sales').textContent = todaySales.toLocaleString();
     document.getElementById('total-count').textContent = totalCount;
     document.getElementById('total-sales').textContent = totalSales.toLocaleString();
 }
 
+// 💬 LINE文章の自動生成プレビュー
+function updateLineMessagePreview() {
+    const startTime = document.getElementById('start-time').value;
+    const meetingPlace = document.getElementById('meeting-place-select').value;
+    const deliveryDetails = document.getElementById('delivery-details').value;
+    const courseMins = document.getElementById('course-time').value;
+    const nominationClass = document.getElementById('nomination-class').value;
+    const custClass = document.getElementById('customer-class').value;
+    const custName = document.getElementById('customer-name').value.trim();
+    const price = document.getElementById('total-price').value;
+    const hotelSelect = document.getElementById('hotel-select').value;
+    
+    let selectedOps = [];
+    document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
+
+    // 指名区分の変換
+    let nomStr = {'F': 'フリー', 'N': 'ネット指名', '本': '本指名'}[nominationClass] || "";
+    
+    // 顧客名の変換
+    let custStr = "";
+    if (custClass === '新') {
+        custStr = custName ? `新規${custName}様` : "新規様";
+    } else {
+        custStr = custName ? `会員${custName}様` : "会員様";
+    }
+
+    // 待ち合わせ・詳細ブロック
+    let placeLine = (meetingPlace !== 'その他') ? `${meetingPlace}待ち合わせ\n` : "";
+    let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
+    let block1 = (placeLine || detailLine) ? `${placeLine}${detailLine}\n` : "\n";
+
+    // OPブロック
+    let opLine = selectedOps.length > 0 ? `OP：${selectedOps.join('、')}\n\n` : "";
+
+    // ホテルブロック
+    let hotelLine = (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') ? `ホテル${hotelSelect}でお願いします\n` : "";
+
+    const message = `ご予約詳細です！
+
+${startTime}～
+
+${block1}${courseMins}分${nomStr}
+${custStr}
+料金${price}円
+
+${opLine}${hotelLine}よろしくお願いいたします
+
+担当者：○○`;
+
+    document.getElementById('line-message-text').value = message;
+}
+
+function copyLineMessage() {
+    const text = document.getElementById('line-message-text').value;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("LINE文章をコピーしました！");
+    }).catch(err => {
+        alert("コピーに失敗しました: " + err);
+    });
+}
+
 function handleFormSubmit(e) {
     e.preventDefault();
+    updateLineMessagePreview(); // 念の為直前にプレビュー更新
 
     const dateVal = document.getElementById('reserve-date').value;
     const custClass = document.getElementById('customer-class').value;
     const nominationClass = document.getElementById('nomination-class').value;
     const girl = document.getElementById('girl-select').value;
-    const courseMins = Number(document.getElementById('course-time').value);
+    const courseMins = document.getElementById('course-time').value;
     const extMins = Number(document.getElementById('extension-time').value || 0);
     const price = document.getElementById('total-price').value;
     const startTime = document.getElementById('start-time').value;
     const custName = document.getElementById('customer-name').value;
     const guideStatus = document.getElementById('guide-status').value;
+    const hotelSelect = document.getElementById('hotel-select').value;
     const hotelRoom = document.getElementById('hotel-room').value;
     const phone = document.getElementById('phone-number').value;
     const meetingPlace = document.getElementById('meeting-place-select').value;
@@ -244,22 +294,25 @@ function handleFormSubmit(e) {
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-    let custTypeStr = "";
-    if (custClass === '新') {
-        const mediaSelected = document.getElementById('media-select').value;
-        const mediaAbbrev = MEDIA_MAPPING[mediaSelected] || mediaSelected;
-        custTypeStr = `新・${nominationClass}(${mediaAbbrev})`;
-    } else {
-        custTypeStr = `${custClass}・${nominationClass}`;
-    }
+    // 顧客・指名区分のテキスト生成
+    let custTypeStr = (custClass === '新') 
+        ? `新・${nominationClass}(${MEDIA_MAPPING[document.getElementById('media-select').value] || document.getElementById('media-select').value})`
+        : `${custClass}・${nominationClass}`;
 
     let locationStr = (meetingPlace === 'その他') ? "" : meetingPlace;
-    const confirmTimeStr = calculateConfirmTime(startTime);
-
+    
+    // 日付成形 (曜日の追加)
     let formattedDate = "";
     if (dateVal) {
         const d = new Date(dateVal);
-        formattedDate = `${d.getMonth() + 1}月${d.getDate()}日`;
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        formattedDate = `${d.getMonth() + 1}月${d.getDate()}日(${days[d.getDay()]})`;
+    }
+
+    // ホテル略称の取得 (待ち合わせがその他でない場合のみ)
+    let hotelAbbrev = "";
+    if (meetingPlace !== 'その他' && hotelSelect !== 'その他') {
+        hotelAbbrev = HOTEL_ABBREV_MAPPING[hotelSelect] || "";
     }
 
     // 🖨️ レシートへ値を代入
@@ -269,10 +322,14 @@ function handleFormSubmit(e) {
     document.getElementById('p-duration').textContent = extMins > 0 ? `${courseMins}+${extMins}` : `${courseMins}`;
     document.getElementById('p-price').textContent = `${Number(price).toLocaleString()}円`;
     document.getElementById('p-time').textContent = startTime;
-    document.getElementById('p-confirm-time').textContent = confirmTimeStr;
+    document.getElementById('p-confirm-time').textContent = calculateConfirmTime(startTime);
     document.getElementById('p-cust-name').textContent = custName || "—";
     document.getElementById('p-guide').textContent = guideStatus || "未選択";
-    document.getElementById('p-room').textContent = hotelRoom || "";
+    
+    // ホテル略称と部屋番号
+    document.getElementById('p-hotel-name').textContent = hotelAbbrev;
+    document.getElementById('p-room').textContent = hotelRoom || ""; 
+
     document.getElementById('p-phone').textContent = phone || "—";
     document.getElementById('p-location').textContent = locationStr;
     document.getElementById('p-options').textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
