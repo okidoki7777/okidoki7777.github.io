@@ -30,7 +30,7 @@
         <div class="container no-print">
             <h1>予約管理システム</h1>
 
-            <details class="summary-box admin-settings" open>
+            <details class="summary-box admin-settings">
                 <summary>🔒 セキュリティ・アカウント設定 (タップで開閉)</summary>
                 <div class="summary-content auth-content">
                     <div class="form-group">
@@ -58,16 +58,18 @@
                 </div>
             </details>
 
-            <section class="admin-section">
-                <h3>👩 女の子の管理</h3>
-                <div class="form-group row-inputs">
-                    <input type="text" id="new-girl-name" placeholder="女の子の名前を入力">
-                    <button type="button" id="add-girl-btn">追加</button>
+            <details class="summary-box admin-settings">
+                <summary>👩 女の子の管理 (タップで開閉)</summary>
+                <div style="padding: 10px; background: #fff; border-top: 1px solid #dcdfe6;">
+                    <div class="form-group row-inputs">
+                        <input type="text" id="new-girl-name" placeholder="女の子の名前を入力">
+                        <button type="button" id="add-girl-btn">追加</button>
+                    </div>
+                    <div class="girl-list-wrapper">
+                        <ul id="girl-list"></ul>
+                    </div>
                 </div>
-                <div class="girl-list-wrapper">
-                    <ul id="girl-list"></ul>
-                </div>
-            </section>
+            </details>
 
             <form id="reservation-form">
                 <h3>📝 予約情報の入力</h3>
@@ -156,32 +158,46 @@
                 </div>
 
                 <div class="form-group">
+                    <label>電話番号</label>
+                    <input type="tel" id="phone-number" placeholder="例: 090-XXXX-XXXX">
+                </div>
+
+                <div class="form-group row-inputs">
+                    <div style="flex: 1;">
+                        <label>待ち合わせ場所</label>
+                        <select id="meeting-place-select" required>
+                            <option value="FM">FM</option>
+                            <option value="ステラP">ステラP</option>
+                            <option value="AI P">AI P</option>
+                            <option value="アストン前">アストン前</option>
+                            <option value="三国待ち合わせ">三国待ち合わせ</option>
+                            <option value="石津待ち合わせ">石津待ち合わせ</option>
+                            <option value="堺IC待ち合わせ">堺IC待ち合わせ</option>
+                            <option value="その他">その他 (空白出力)</option>
+                        </select>
+                    </div>
+                    <div id="hotel-group" style="flex: 1;">
+                        <label>ホテル選択</label>
+                        <select id="hotel-select">
+                            <option value="">-- 未選択 --</option>
+                            <option value="ステラ">ステラ</option>
+                            <option value="AI">AI</option>
+                            <option value="おしゃべりダック">おしゃべりダック</option>
+                            <option value="リーベ">リーベ</option>
+                            <option value="リンド">リンド</option>
+                            <option value="その他">その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label>ホテル部屋番 (空欄時は空白出力)</label>
                     <input type="text" id="hotel-room" placeholder="例: 301">
                 </div>
 
                 <div class="form-group">
-                    <label>電話番号</label>
-                    <input type="tel" id="phone-number" placeholder="例: 090-XXXX-XXXX">
-                </div>
-
-                <div class="form-group">
-                    <label>待ち合わせ場所</label>
-                    <select id="meeting-place-select" required>
-                        <option value="FM">FM</option>
-                        <option value="ステラP">ステラP</option>
-                        <option value="AI P">AI P</option>
-                        <option value="アストン前">アストン前</option>
-                        <option value="三国待ち合わせ">三国待ち合わせ</option>
-                        <option value="石津待ち合わせ">石津待ち合わせ</option>
-                        <option value="堺IC待ち合わせ">堺IC待ち合わせ</option>
-                        <option value="その他">その他 (空白出力)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>デリ詳細</label>
-                    <input type="text" id="delivery-details" placeholder="例: 堺区デリ 前店の本指名">
+                    <label>デリ詳細・その他・特徴</label>
+                    <input type="text" id="delivery-details" placeholder="例: 青パーカー 黒ズボン">
                 </div>
 
                 <div class="form-group">
@@ -194,7 +210,13 @@
                     <div class="checkbox-grid" id="options-container"></div>
                 </div>
 
-                <div class="form-actions">
+                <div class="form-group line-box">
+                    <label style="color: #00b900;">💬 LINE送信用テキスト (内容を入力すると自動生成されます)</label>
+                    <textarea id="line-message-text" rows="12" readonly placeholder="ここにLINE文章が自動生成されます"></textarea>
+                    <button type="button" id="btn-copy-line" class="btn-primary" style="background: #00b900; margin-top: 5px;">LINE文章をコピー</button>
+                </div>
+
+                <div class="form-actions" style="margin-top: 20px;">
                     <button type="submit" class="btn-primary">予約を登録・印刷プレビューに反映</button>
                 </div>
             </form>
@@ -218,7 +240,13 @@
             <div class="r-row border-bottom row-h3">
                 <div class="r-col w-33 border-right"><span class="r-label">顧客名</span><span class="r-val" id="p-cust-name"></span></div>
                 <div class="r-col w-34 border-right"><span class="r-label">案内時間区分</span><span class="r-val" id="p-guide"></span></div>
-                <div class="r-col w-33"><span class="r-label">ホテル部屋番</span><span class="r-val small-text" id="p-room"></span></div>
+                <div class="r-col w-33">
+                    <span class="r-label">ホテル部屋番</span>
+                    <div class="val-wrapper">
+                        <span id="p-hotel-name" class="hotel-abbrev"></span>
+                        <span class="r-val" id="p-room"></span>
+                    </div>
+                </div>
             </div>
             <div class="r-row border-bottom row-h4">
                 <div class="r-col w-100"><span class="r-label">電話番号</span><span class="r-val font-large" id="p-phone"></span></div>
@@ -228,7 +256,7 @@
                 <div class="r-col w-34"><span class="r-label">OP</span><span class="r-val small-text" id="p-options"></span></div>
             </div>
             <div class="r-row row-h6">
-                <div class="r-col w-66 border-right"><span class="r-label">デリ詳細</span><span class="r-val" id="p-details"></span></div>
+                <div class="r-col w-66 border-right"><span class="r-label">デリ詳細・その他・特徴</span><span class="r-val" id="p-details"></span></div>
                 <div class="r-col w-34"><span class="r-label">前回</span><span class="r-val small-text" id="p-prev"></span></div>
             </div>
         </div>
