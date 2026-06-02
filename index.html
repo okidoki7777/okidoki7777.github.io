@@ -11,7 +11,6 @@
     <div class="container no-print">
         <h1>予約管理システム</h1>
 
-        <!-- 売上・予約数の折り畳みセクション -->
         <details class="summary-box" open>
             <summary>📊 本日の集計・登録データ (タップして開閉)</summary>
             <div class="summary-content">
@@ -22,7 +21,6 @@
             </div>
         </details>
 
-        <!-- 女の子の追加・編集システム -->
         <section class="admin-section">
             <h3>👩 女の子の管理</h3>
             <div class="form-group row-inputs">
@@ -34,7 +32,6 @@
             </div>
         </section>
 
-        <!-- 予約入力フォーム -->
         <form id="reservation-form">
             <h3>📝 予約情報の入力</h3>
 
@@ -43,9 +40,35 @@
                 <input type="date" id="reserve-date" required>
             </div>
 
-            <div class="form-group">
-                <label>顧客・指名 (区分)</label>
-                <input type="text" id="customer-type" placeholder="例: Ｒ・Ｎ、新・本(ぴゅあ)" required>
+            <div class="form-group row-inputs-3">
+                <div>
+                    <label>顧客区分</label>
+                    <select id="customer-class" required>
+                        <option value="R">R (リピーター)</option>
+                        <option value="新">新 (新規)</option>
+                    </select>
+                </div>
+                <div id="media-group" class="hidden">
+                    <label>広告媒体</label>
+                    <select id="media-select">
+                        <option value="シティヘヴン">シティヘヴン</option>
+                        <option value="ぴゅあらば">ぴゅあらば</option>
+                        <option value="デリヘルタウン">デリヘルタウン</option>
+                        <option value="口コミ情報局">口コミ情報局</option>
+                        <option value="風俗じゃぱん">風俗じゃぱん</option>
+                        <option value="デリヘルじゃぱん">デリヘルじゃぱん</option>
+                        <option value="HP">HP</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div>
+                    <label>指名区分</label>
+                    <select id="nomination-class" required>
+                        <option value="F">F (フリー)</option>
+                        <option value="N">N (ネット指名)</option>
+                        <option value="本">本 (本指名 +1,000円)</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
@@ -55,18 +78,23 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>コース時間 (ベース価格自動連動)</label>
-                <select id="course-time" required></select>
+            <div class="form-group row-inputs-3">
+                <div>
+                    <label>コース時間</label>
+                    <select id="course-time" required></select>
+                </div>
+                <div>
+                    <label>延長時間</label>
+                    <select id="extension-time"></select>
+                </div>
+                <div>
+                    <label>交通費</label>
+                    <select id="transport-fee"></select>
+                </div>
             </div>
 
             <div class="form-group">
-                <label>延長時間 (追加料金自動連動)</label>
-                <select id="extension-time"></select>
-            </div>
-
-            <div class="form-group">
-                <label>料金 (手動微調整も可能)</label>
+                <label>料金 (自動連動・手動微調整可能)</label>
                 <input type="number" id="total-price" min="0" required>
             </div>
 
@@ -102,7 +130,16 @@
 
             <div class="form-group">
                 <label>待ち合わせ場所</label>
-                <input type="text" id="meeting-place" placeholder="例: アストン前">
+                <select id="meeting-place-select" required>
+                    <option value="FM">FM</option>
+                    <option value="ステラP">ステラP</option>
+                    <option value="AI P">AI P</option>
+                    <option value="アストン前">アストン前</option>
+                    <option value="三国待ち合わせ">三国待ち合わせ</option>
+                    <option value="石津待ち合わせ">石津待ち合わせ</option>
+                    <option value="堺IC待ち合わせ">堺IC待ち合わせ</option>
+                    <option value="その他">その他 (空白出力)</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -115,65 +152,50 @@
                 <input type="text" id="prev-visit" placeholder="例: 2025年5月31日">
             </div>
 
-            <!-- 無料オプション(複数選択チェックボックス) -->
             <div class="form-group">
                 <label>無料オプション (OP)</label>
                 <div class="checkbox-grid" id="options-container"></div>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn-primary">予約を登録・印刷用プレビューに反映</button>
+                <button type="submit" class="btn-primary">予約を登録・印刷プレビューに反映</button>
             </div>
         </form>
     </div>
 
-    <!-- 🖨️ エプソン TM-T88Ⅶ (80mm幅・縦125mm) 伝票デザインエリア -->
     <div id="receipt-print-area" class="receipt-container">
-        <!-- 1段目 -->
-        <div class="r-row border-bottom">
+        <div class="r-row border-bottom row-h1">
             <div class="r-col w-33 border-right"><span class="r-label">日付</span><span class="r-val" id="p-date"></span></div>
             <div class="r-col w-34 border-right"><span class="r-label">顧客・指名</span><span class="r-val" id="p-cust-type"></span></div>
-            <div class="r-col w-33"><span class="r-label">女の子</span><span class="r-val emphasis" id="p-girl"></span></div>
+            <div class="r-col w-33"><span class="r-label">女の子</span><span class="r-val" id="p-girl"></span></div>
         </div>
-        <!-- 2段目 -->
-        <div class="r-row border-bottom">
-            <div class="r-col w-33 border-right"><span class="r-label">コース分数</span><span class="r-val bold" id="p-duration"></span></div>
-            <div class="r-col w-34 border-right"><span class="r-label">料金</span><span class="r-val bold" id="p-price"></span></div>
+        <div class="r-row border-bottom row-h2">
+            <div class="r-col w-33 border-right"><span class="r-label">コース分数</span><span class="r-val" id="p-duration"></span></div>
+            <div class="r-col w-34 border-right"><span class="r-label">料金</span><span class="r-val" id="p-price"></span></div>
             <div class="r-col w-33">
                 <span class="r-label">予約時刻</span>
-                <span class="r-val bold" id="p-time"></span>
+                <span class="r-val" id="p-time"></span>
                 <span class="r-sub-val" id="p-confirm-time"></span>
             </div>
         </div>
-        <!-- 3段目 -->
-        <div class="r-row border-bottom">
+        <div class="r-row border-bottom row-h3">
             <div class="r-col w-33 border-right"><span class="r-label">顧客名</span><span class="r-val" id="p-cust-name"></span></div>
-            <div class="r-col w-34 border-right"><span class="r-label">案内時間区分</span><span class="r-val emphasis" id="p-guide"></span></div>
-            <div class="r-col w-33">
-                <span class="r-label">ホテル部屋番</span>
-                <span class="r-val small-text" id="p-room"></span>
-            </div>
+            <div class="r-col w-34 border-right"><span class="r-label">案内時間区分</span><span class="r-val" id="p-guide"></span></div>
+            <div class="r-col w-33"><span class="r-label">ホテル部屋番</span><span class="r-val small-text" id="p-room"></span></div>
         </div>
-        <!-- 4段目: 電話番号 -->
-        <div class="r-row border-bottom">
-            <div class="r-col w-100">
-                <span class="r-label">電話番号</span>
-                <span class="r-val font-large" id="p-phone"></span>
-            </div>
+        <div class="r-row border-bottom row-h4">
+            <div class="r-col w-100"><span class="r-label">電話番号</span><span class="r-val font-large" id="p-phone"></span></div>
         </div>
-        <!-- 5段目: 待ち合わせ場所 & OP -->
-        <div class="r-row border-bottom" style="height: 52px;">
-            <div class="r-col w-66 border-right"><span class="r-label">待ち合わせ場所</span><span class="r-val font-mid" id="p-location"></span></div>
-            <div class="r-col w-34"><span class="r-label">OP</span><span class="r-val multi-line" id="p-options"></span></div>
+        <div class="r-row border-bottom row-h5">
+            <div class="r-col w-66 border-right"><span class="r-label">待ち合わせ場所</span><span class="r-val" id="p-location"></span></div>
+            <div class="r-col w-34"><span class="r-label">OP</span><span class="r-val small-text" id="p-options"></span></div>
         </div>
-        <!-- 6段目: デリ詳細 & 前回 -->
-        <div class="r-row" style="height: 42px;">
-            <div class="r-col w-66 border-right"><span class="r-label">デリ詳細</span><span class="r-val small-text" id="p-details"></span></div>
+        <div class="r-row row-h6">
+            <div class="r-col w-66 border-right"><span class="r-label">デリ詳細</span><span class="r-val" id="p-details"></span></div>
             <div class="r-col w-34"><span class="r-label">前回</span><span class="r-val small-text" id="p-prev"></span></div>
         </div>
     </div>
 
-    <!-- 印刷ボタン (プレビュー確認用につけています) -->
     <div class="container no-print" style="margin-top: 10px; margin-bottom: 50px;">
         <button type="button" onclick="window.print()" class="btn-print">この内容でレシート印刷を実行</button>
     </div>
