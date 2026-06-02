@@ -57,7 +57,7 @@ button.btn-primary { width: 100%; padding: 12px; background: #27ae60; color: whi
 button.btn-print { width: 100%; padding: 12px; background: #2980b9; color: white; border: none; border-radius: 5px; font-size: 1rem; font-weight: bold; cursor: pointer; }
 
 /* ==========================================================================
-   🖨️ 印刷＆レシートデザイン構造 (EPSON TM-T88Ⅶ 80mm幅・縦100mm専用)
+   🖨️ レシートデザイン構造 (EPSON TM-T88Ⅶ 80mm幅・縦100mm専用)
    ========================================================================== */
 .receipt-container {
     width: 272px; height: 378px; background: #fff; border: 2px solid #000; box-sizing: border-box;
@@ -73,15 +73,27 @@ button.btn-print { width: 100%; padding: 12px; background: #2980b9; color: white
 .r-col { display: flex; flex-direction: column; padding: 2px 3px; box-sizing: border-box; overflow: hidden; }
 
 /* 項目のラベル (左上固定) */
-.r-label { font-size: 8px; font-weight: bold; height: 10px; line-height: 10px; border-bottom: 0.5px dashed #444; margin-bottom: 2px; white-space: nowrap; color: #333; text-align: left; }
+/* "ホテル/建物名・部屋番" など長い文字がはみ出さないよう letter-spacing を微調整 */
+.r-label { 
+    font-size: 7.5px; 
+    font-weight: bold; 
+    height: 10px; 
+    line-height: 10px; 
+    border-bottom: 0.5px dashed #444; 
+    margin-bottom: 2px; 
+    white-space: nowrap; 
+    color: #333; 
+    text-align: left; 
+    letter-spacing: -0.2px; 
+}
 
-/* 値 (大きく、上下左右中央寄せ) */
+/* 値 (大きく、上下左右完全中央寄せ) */
 .r-val { 
     flex: 1; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    font-size: 16px;  /* 文字を大きくしました */
+    font-size: 16px; 
     text-align: center; 
     font-weight: bold; 
     color: #000; 
@@ -111,7 +123,12 @@ button.btn-print { width: 100%; padding: 12px; background: #2980b9; color: white
 .r-val.small-text { font-size: 10px; text-align: left; justify-content: flex-start; align-items: flex-start; white-space: normal; padding-top: 2px; }
 .r-sub-val { font-size: 12px; text-align: center; font-weight: bold; line-height: 1.1; margin-top: -3px; }
 
+/* 印刷実行時の命令設定 */
 @media print {
+    @page {
+        size: 80mm 100mm; /* 📱 iPhone/iPad用のサイズ強制指定 */
+        margin: 0;
+    }
     body { background: none; padding: 0; margin: 0; }
     .no-print { display: none !important; }
     .receipt-container { margin: 0; border: 2px solid #000; page-break-inside: avoid; }
