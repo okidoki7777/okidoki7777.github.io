@@ -1,4 +1,8 @@
-// 初期設定データ
+// 🔐 アカウント情報初期化 (なければ admin / admin)
+let savedId = localStorage.getItem('auth_id') || 'admin';
+let savedPass = localStorage.getItem('auth_pass') || 'admin';
+
+// データ設定
 const BASE_PRICES = {
     60: 10000, 75: 13000, 90: 15000, 120: 21000, 150: 27000,
     180: 33000, 240: 45000, 300: 57000, 360: 69000
@@ -11,31 +15,32 @@ const OPTIONS_LIST = [
     "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り",
     "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパン・ノーブラ"
 ];
-
-// 媒体名の自動変換マッピング
 const MEDIA_MAPPING = {
-    "シティヘヴン": "ヘヴン",
-    "ぴゅあらば": "ぴゅあ",
-    "デリヘルタウン": "タウン",
-    "口コミ情報局": "口コミ",
-    "風俗じゃぱん": "風じゃ",
-    "デリヘルじゃぱん": "デリじゃ",
-    "HP": "HP",
-    "その他": "その他"
+    "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン",
+    "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "デリヘルじゃぱん": "デリじゃ",
+    "HP": "HP", "その他": "その他"
 };
 
 let girlsData = JSON.parse(localStorage.getItem('girls_list')) || ["さつき", "みか", "ひなた"];
 let allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 🔐 認証チェック (SessionStorageをチェック)
+    checkAuth();
+
+    // 初期化と描画
     initFormSelects();
     renderGirls();
     updateSummary();
 
-    // 初期日付セット
+    // 日付を今日に
     document.getElementById('reserve-date').value = new Date().toISOString().split('T')[0];
 
-    // イベント連動設定
+    // イベントリスナー
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+    document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
+    document.getElementById('btn-logout').addEventListener('click', handleLogout);
+    
     document.getElementById('customer-class').addEventListener('change', toggleMediaVisibility);
     document.getElementById('course-time').addEventListener('change', calculateTotalPrice);
     document.getElementById('extension-time').addEventListener('change', calculateTotalPrice);
@@ -44,33 +49,81 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-girl-btn').addEventListener('click', addNewGirl);
     document.getElementById('reservation-form').addEventListener('submit', handleFormSubmit);
 
-    // 初回表示時の動作トリガー
     calculateTotalPrice();
     toggleMediaVisibility();
 });
 
+// --- 🔐 認証関連ロジック ---
+function checkAuth() {
+    if (sessionStorage.getItem('isLoggedIn') === 'true') {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-wrapper').classList.remove('hidden');
+    }
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const inputId = document.getElementById('login-id').value;
+    const inputPass = document.getElementById('login-pass').value;
+
+    if (inputId === savedId && inputPass === savedPass) {
+        sessionStorage.setItem('isLoggedIn', 'true');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-wrapper').classList.remove('hidden');
+    } else {
+        alert("IDまたはパスワードが間違っています。");
+    }
+}
+
+function handleAuthUpdate() {
+    const newId = document.getElementById('new-auth-id').value.trim();
+    const newPass = document.getElementById('new-auth-pass').value.trim();
+
+    if (!newId || !newPass) {
+        alert("新しいIDとパスワードを両方入力してください。");
+        return;
+    }
+
+    if (confirm("IDとパスワードを変更しますか？次回のログインから必要になります。")) {
+        localStorage.setItem('auth_id', newId);
+        localStorage.setItem('auth_pass', newPass);
+        savedId = newId;
+        savedPass = newPass;
+        document.getElementById('new-auth-id').value = '';
+        document.getElementById('new-auth-pass').value = '';
+        alert("認証情報を更新しました！");
+    }
+}
+
+function handleLogout() {
+    if (confirm("ログアウトしますか？")) {
+        sessionStorage.removeItem('isLoggedIn');
+        document.getElementById('app-wrapper').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('login-id').value = '';
+        document.getElementById('login-pass').value = '';
+    }
+}
+// ------------------------------
+
 function initFormSelects() {
-    // コース時間
     const courseSelect = document.getElementById('course-time');
     Object.keys(BASE_PRICES).forEach(mins => {
         courseSelect.add(new Option(`${mins}分 (${BASE_PRICES[mins].toLocaleString()}円)`, mins));
     });
 
-    // 延長時間
     const extSelect = document.getElementById('extension-time');
     Object.keys(EXTENSION_PRICES).forEach(mins => {
         let label = mins == 0 ? "なし" : `+${mins}分 (+${EXTENSION_PRICES[mins].toLocaleString()}円)`;
         extSelect.add(new Option(label, mins));
     });
 
-    // 交通費 (0円〜15000円、1000円単位)
     const transSelect = document.getElementById('transport-fee');
     transSelect.add(new Option("なし (0円)", 0));
     for (let f = 1000; f <= 15000; f += 1000) {
         transSelect.add(new Option(`${f.toLocaleString()}円`, f));
     }
 
-    // 30時制 5分刻み時刻
     const timeSelect = document.getElementById('start-time');
     for (let h = 9; h <= 30; h++) {
         for (let m = 0; m < 60; m += 5) {
@@ -80,7 +133,6 @@ function initFormSelects() {
         }
     }
 
-    // 無料オプション
     const optContainer = document.getElementById('options-container');
     OPTIONS_LIST.forEach(op => {
         let lbl = document.createElement('label');
@@ -89,7 +141,6 @@ function initFormSelects() {
     });
 }
 
-// 顧客区分で「新(新規)」が選ばれた時のみ媒体プルダウンを表示
 function toggleMediaVisibility() {
     const custClass = document.getElementById('customer-class').value;
     const mediaGroup = document.getElementById('media-group');
@@ -100,7 +151,6 @@ function toggleMediaVisibility() {
     }
 }
 
-// 金額の自動連動算出 (本指名の+1000円と交通費を組み込む)
 function calculateTotalPrice() {
     const courseMins = document.getElementById('course-time').value;
     const extMins = document.getElementById('extension-time').value || 0;
@@ -109,8 +159,6 @@ function calculateTotalPrice() {
 
     let base = BASE_PRICES[courseMins] || 0;
     let ext = EXTENSION_PRICES[extMins] || 0;
-    
-    // 指名区分が「本」なら1000円プラス
     let nominationAdd = (nomination === '本') ? 1000 : 0;
 
     document.getElementById('total-price').value = base + ext + transport + nominationAdd;
@@ -148,20 +196,12 @@ function deleteGirl(index) {
     }
 }
 
-// 確認電話時刻の計算ロジック
 function calculateConfirmTime(startTimeStr) {
     let [h, m] = startTimeStr.split(':').map(Number);
-
-    // 【修正条件】9:30〜9:59の予約は、一律(9:00)にする
-    if (h === 9 && m >= 30 && m <= 59) {
-        return `(9:00)`;
-    }
-
-    // 10:00以降、およびその他は規定通り1時間前
+    // 9:30〜9:59の予約は、一律(9:00)にする
+    if (h === 9 && m >= 30 && m <= 59) return `(9:00)`;
     let targetH = h - 1;
-    let targetM = m;
-
-    return `(${targetH}:${String(targetM).padStart(2, '0')})`;
+    return `(${targetH}:${String(m).padStart(2, '0')})`;
 }
 
 function updateSummary() {
@@ -204,7 +244,6 @@ function handleFormSubmit(e) {
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-    // 顧客・指名区分のテキスト生成と媒体名自動省略変換
     let custTypeStr = "";
     if (custClass === '新') {
         const mediaSelected = document.getElementById('media-select').value;
@@ -214,13 +253,9 @@ function handleFormSubmit(e) {
         custTypeStr = `${custClass}・${nominationClass}`;
     }
 
-    // 待ち合わせ場所が「その他」の場合は印刷出力を空白にする
     let locationStr = (meetingPlace === 'その他') ? "" : meetingPlace;
-
-    // 確認電話時刻の取得
     const confirmTimeStr = calculateConfirmTime(startTime);
 
-    // 日付成形
     let formattedDate = "";
     if (dateVal) {
         const d = new Date(dateVal);
@@ -237,18 +272,16 @@ function handleFormSubmit(e) {
     document.getElementById('p-confirm-time').textContent = confirmTimeStr;
     document.getElementById('p-cust-name').textContent = custName || "—";
     document.getElementById('p-guide').textContent = guideStatus || "未選択";
-    document.getElementById('p-room').textContent = hotelRoom || ""; // 空白保証
+    document.getElementById('p-room').textContent = hotelRoom || "";
     document.getElementById('p-phone').textContent = phone || "—";
     document.getElementById('p-location').textContent = locationStr;
     document.getElementById('p-options').textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
     document.getElementById('p-details').textContent = deliveryDetails || "—";
     document.getElementById('p-prev').textContent = prevVisit || "—";
 
-    // 集計用保存
     allReservations.push({ date: dateVal, price: price });
     localStorage.setItem('reservations_list', JSON.stringify(allReservations));
     updateSummary();
 
-    // プレビューへ移動
     document.getElementById('receipt-print-area').scrollIntoView({ behavior: 'smooth' });
 }
