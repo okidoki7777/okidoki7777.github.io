@@ -146,7 +146,18 @@ class RewardExcelParser:
                 continue
             
             # 指名料の有無を判定
-            has_designation = bool(designation_cell) and str(designation_cell).strip().upper() not in ["", "NO", "0", "FALSE"]
+            # ユーザーの要望により「ネット指名」はポイント加算対象外にする
+            designation_text = str(designation_cell).strip() if designation_cell is not None else ""
+            upper_text = designation_text.upper()
+            if designation_text == "" or upper_text in ["", "NO", "0", "FALSE"]:
+                has_designation = False
+            else:
+                # ネット指名を示す語が含まれる場合は加算しない
+                if "ネット" in designation_text or "NET" in upper_text or "WEB" in upper_text:
+                    has_designation = False
+                else:
+                    # それ以外は指名料ありと見なす（本指名など）
+                    has_designation = True
             
             data.append({
                 'name': str(name_cell).strip(),
