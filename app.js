@@ -59,8 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if(id === 'meeting-place-select') toggleHotelVisibility();
     }));
 
-    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'hotel-room', 'prev-visit', 'media-select'];
+    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'hotel-room', 'prev-visit', 'media-select', 'staff-name'];
     textEvents.forEach(id => document.getElementById(id).addEventListener('input', updateLineMessagePreview));
+    document.getElementById('staff-name').addEventListener('change', updateLineMessagePreview);
     document.getElementById('options-container').addEventListener('change', updateLineMessagePreview);
 
     document.getElementById('add-girl-btn').addEventListener('click', addNewGirl);
@@ -261,6 +262,7 @@ function updateLineMessagePreview() {
     const hotelRoom = document.getElementById('hotel-room').value.trim();
     const transportFee = Number(document.getElementById('transport-fee').value || 0);
     const prevVisit = document.getElementById('prev-visit').value.trim();
+    const staffName = document.getElementById('staff-name').value;
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -311,7 +313,10 @@ function updateLineMessagePreview() {
 
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いします！`;
+    // 担当者名の末尾追加
+    let staffLine = staffName ? `\n\n担当：${staffName}` : "";
+
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いします！${staffLine}`;
     document.getElementById('line-message-text').value = message;
 }
 
@@ -368,6 +373,7 @@ function exportTransferData() {
         dd: document.getElementById('delivery-details').value,
         pv: document.getElementById('prev-visit').value,
         ms: document.getElementById('media-select').value,
+        sn: document.getElementById('staff-name').value,
         ops: selectedOps
     };
 
@@ -379,12 +385,14 @@ function exportTransferData() {
     const girl = data.g || "未選択";
     const startTime = data.st || "未定";
     const price = data.pr || "0";
+    const staffName = data.sn || "未設定";
 
     const copyText = `【予約データ転送】
 
 👩 女の子：${girl}
 🕒 時間：${startTime}
 💵 金額：${Number(price).toLocaleString()}円
+👤 担当：${staffName}
 
 以下のURLを印刷用PCで開くか、コードを読み込んでください。
 
@@ -449,6 +457,7 @@ function importTransferData(code) {
         if(data.dd) document.getElementById('delivery-details').value = data.dd;
         if(data.pv) document.getElementById('prev-visit').value = data.pv;
         if(data.ms) document.getElementById('media-select').value = data.ms;
+        if(data.sn) document.getElementById('staff-name').value = data.sn;
 
         document.querySelectorAll('.op-checkbox').forEach(cb => cb.checked = false);
         if(data.ops && Array.isArray(data.ops)) {
