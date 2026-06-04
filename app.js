@@ -13,7 +13,7 @@ for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
 }
 
-const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レ〇プ", "SM", "潮吹き"];
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパン・ノーブラ"];
 const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "ホットヘルパー": "ホット" };
 const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
 
@@ -137,10 +137,10 @@ function handleLogout() {
 
 // --- 初期データ処理 ---
 function initGirlsData() {
-    if (localStorage.getItem('app_version') !== 'v6_1') {
+    if (localStorage.getItem('app_version') !== 'v6_2') {
         girlsData = DEFAULT_GIRLS.sort((a, b) => a.localeCompare(b, 'ja'));
         localStorage.setItem('girls_list', JSON.stringify(girlsData));
-        localStorage.setItem('app_version', 'v6_1');
+        localStorage.setItem('app_version', 'v6_2');
     } else {
         try {
             girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
@@ -164,12 +164,13 @@ function initFormSelects() {
     transSelect.add(new Option("なし (0円)", 0));
     for (let f = 1000; f <= 15000; f += 1000) transSelect.add(new Option(`${f.toLocaleString()}円`, f));
 
-    // 開始時刻 10分単位
+    // 🕒 開始時刻 9:30～30:00 (10分単位)
     const timeSelect = document.getElementById('start-time');
     timeSelect.add(new Option("-- 未選択 --", "")); 
     for (let h = 9; h <= 30; h++) {
         for (let m = 0; m < 60; m += 10) { 
-            if (h === 30 && m > 0) break;
+            if (h === 9 && m < 30) continue; // 9:30未満をスキップ
+            if (h === 30 && m > 0) break; // 30:00以降をスキップ
             timeSelect.add(new Option(`${h}:${String(m).padStart(2, '0')}`, `${h}:${String(m).padStart(2, '0')}`));
         }
     }
