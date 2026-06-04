@@ -50,18 +50,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
-    document.getElementById('customer-class').addEventListener('change', toggleMediaVisibility);
-    document.getElementById('meeting-place-select').addEventListener('change', toggleHotelVisibility);
-    
-    // リアルタイム再計算
-    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select'];
+    // リアルタイム再計算・LINE文章連動イベントの整理
+    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class'];
     recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
         calculateTotalPrice();
         updateLineMessagePreview();
+        if(id === 'customer-class') toggleMediaVisibility();
+        if(id === 'meeting-place-select') toggleHotelVisibility();
     }));
 
-    // 文字入力系（前回日付を含む）もLINE文章にリアルタイム連動
-    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'customer-class', 'hotel-room', 'prev-visit'];
+    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'hotel-room', 'prev-visit', 'media-select'];
     textEvents.forEach(id => document.getElementById(id).addEventListener('input', updateLineMessagePreview));
     document.getElementById('options-container').addEventListener('change', updateLineMessagePreview);
 
@@ -240,7 +238,7 @@ function updateSummary() {
 function updateLineMessagePreview() {
     const startTime = document.getElementById('start-time').value;
     const meetingPlace = document.getElementById('meeting-place-select').value;
-    const deliveryDetails = document.getElementById('delivery-details').value;
+    const deliveryDetails = document.getElementById('delivery-details').value.trim();
     
     const courseMins = Number(document.getElementById('course-time').value);
     const extMins = Number(document.getElementById('extension-time').value || 0);
@@ -252,13 +250,12 @@ function updateLineMessagePreview() {
     const price = document.getElementById('total-price').value;
     const hotelSelect = document.getElementById('hotel-select').value;
     const hotelRoom = document.getElementById('hotel-room').value.trim();
-    const transportFee = Number(document.getElementById('transport-fee').value || 0);
     const prevVisit = document.getElementById('prev-visit').value.trim();
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-    // 指名区分の生成 (本指名かつ前回の入力がある場合、(前回〇〇)を付与)
+    // 指名区分の生成
     let nomStr = {'F': 'フリー', 'N': 'ネット指名', '本': '本指名'}[nominationClass] || "";
     if (nominationClass === '本' && prevVisit) {
         nomStr += `(前回${prevVisit})`;
@@ -266,30 +263,36 @@ function updateLineMessagePreview() {
 
     let custStr = (custClass === '新') ? (custName ? `新規${custName}様` : "新規様") : (custName ? `会員${custName}様` : "会員様");
 
-    let placeLine = (meetingPlace !== 'その他') ? `${meetingPlace}待ち合わせ\n` : "";
-    let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
-    
-    // 交通費選択（デリバリー）の場合、ホテル名・部屋番号をデリ詳細の下に追加
-    let deliveryRoomLine = (transportFee > 0 && hotelRoom) ? `${hotelRoom}\n` : "";
+    // 待ち合わせ場所 (「待ち合わせ」の重複を防ぐ)
+    let placeLine = "";
+    if (meetingPlace !== 'その他') {
+        placeLine = meetingPlace.endsWith("待ち合わせ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`;
+    }
 
-    let block1 = (placeLine || detailLine || deliveryRoomLine) ? `${placeLine}${detailLine}${deliveryRoomLine}\n` : "\n";
+    // デリ詳細と部屋番号
+    let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
+    let roomLine = hotelRoom ? `${hotelRoom}\n` : "";
+    
+    // 第1ブロックの結合
+    let block1 = (placeLine || detailLine || roomLine) ? `${placeLine}${detailLine}${roomLine}\n` : "\n";
 
     let opLine = selectedOps.length > 0 ? `OP：${selectedOps.join('、')}\n\n` : "";
     
-    // ✨ ホテル代の計算とテキスト生成
+    // ホテル代の計算とテキスト生成
     let hotelPriceStr = "";
     let hotelLine = "";
     if (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') {
-        // ホテル代テーブル (180分まで定義)
         const HOTEL_PRICES = { 60: 2300, 75: 2500, 90: 2600, 120: 2900, 150: 3200, 180: 3500 };
         const hPrice = HOTEL_PRICES[courseMins];
         
-        if (hPrice) {
-            hotelPriceStr = `(ホテル代${hPrice}円)`;
+        if (hPrice) hotelPriceStr = `(ホテル代${hPrice}円)`;
+        
+        // 部屋番号が入力されている場合は「ホテル〇〇でお願いします」を非表示にする（二重入力対策）
+        if (!hotelRoom) {
+            hotelLine += `ホテル${hotelSelect}でお願いします\n`;
         }
         
-        hotelLine = `ホテル${hotelSelect}でお願いします\n`;
-        // ステラ以外の場合は差額アナウンスを追加
+        // 差額アナウンス
         if (hotelSelect !== 'ステラ') {
             hotelLine += `ホテル代差額分はお客様払いです。\n`;
         }
@@ -317,14 +320,14 @@ function handleFormSubmit(e) {
     const extMins = Number(document.getElementById('extension-time').value || 0);
     const price = document.getElementById('total-price').value;
     const startTime = document.getElementById('start-time').value;
-    const custName = document.getElementById('customer-name').value;
+    const custName = document.getElementById('customer-name').value.trim();
     const guideStatus = document.getElementById('guide-status').value;
     const hotelSelect = document.getElementById('hotel-select').value;
-    const hotelRoom = document.getElementById('hotel-room').value;
-    const phone = document.getElementById('phone-number').value;
+    const hotelRoom = document.getElementById('hotel-room').value.trim();
+    const phone = document.getElementById('phone-number').value.trim();
     const meetingPlace = document.getElementById('meeting-place-select').value;
-    const deliveryDetails = document.getElementById('delivery-details').value;
-    const prevVisit = document.getElementById('prev-visit').value;
+    const deliveryDetails = document.getElementById('delivery-details').value.trim();
+    const prevVisit = document.getElementById('prev-visit').value.trim();
 
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -358,8 +361,20 @@ function handleFormSubmit(e) {
     document.getElementById('p-cust-name').textContent = custName || "—";
     document.getElementById('p-guide').textContent = guideStatus || "未選択";
     
+    // ホテル略称と部屋番号（文字数による自動サイズ調整）
     document.getElementById('p-hotel-name').textContent = hotelAbbrev;
-    document.getElementById('p-room').textContent = hotelRoom || ""; 
+    const pRoomEl = document.getElementById('p-room');
+    pRoomEl.textContent = hotelRoom || ""; 
+    const roomLen = hotelRoom.length;
+    if (roomLen >= 14) {
+        pRoomEl.style.fontSize = "9px";
+    } else if (roomLen >= 10) {
+        pRoomEl.style.fontSize = "11px";
+    } else if (roomLen >= 7) {
+        pRoomEl.style.fontSize = "13px";
+    } else {
+        pRoomEl.style.fontSize = "16px"; // 通常サイズ
+    }
 
     document.getElementById('p-phone').textContent = phone || "—";
     document.getElementById('p-location').textContent = locationStr;
