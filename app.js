@@ -13,10 +13,9 @@ for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
 }
 
-const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P"];
-const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ" };
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レ〇プ", "SM", "潮吹き"];
+const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "ホットヘルパー": "ホット" };
 const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
-const STAFF_LIST = ["奥山", "高野", "橋本", "田辺", "秋田"];
 
 const DEFAULT_GIRLS = [
     "るな","あいな","ほまれ","ちずる","ふみか","みれい","かほ","そら","めい","なな",
@@ -37,15 +36,6 @@ try {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // URLからの転送データがあるかチェック（ログイン前）
-    const params = new URLSearchParams(window.location.search);
-    const hasTransferData = params.has('tdata');
-    
-    // 転送データがあればログインをスキップ
-    if (hasTransferData) {
-        sessionStorage.setItem('isLoggedIn', 'true');
-    }
-    
     checkAuth();
     initGirlsData();
     initFormSelects();
@@ -61,42 +51,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
     // リアルタイム再計算・LINE文章連動イベントの整理
-    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class', 'staff-select'];
-    recalcEvents.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) {
-            el.addEventListener('change', () => {
-                calculateTotalPrice();
-                updateLineMessagePreview();
-                if(id === 'customer-class') toggleMediaVisibility();
-                if(id === 'meeting-place-select') toggleHotelVisibility();
-            });
-        }
-    });
+    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class'];
+    recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
+        calculateTotalPrice();
+        updateLineMessagePreview();
+        if(id === 'customer-class') toggleMediaVisibility();
+        if(id === 'meeting-place-select') toggleHotelVisibility();
+    }));
 
-    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'hotel-room', 'prev-visit', 'media-select', 'phone-number'];
-    textEvents.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener('input', updateLineMessagePreview);
-    });
-    const optContainer = document.getElementById('options-container');
-    if(optContainer) optContainer.addEventListener('change', updateLineMessagePreview);
+    const textEvents = ['start-time', 'customer-name', 'delivery-details', 'hotel-room', 'prev-visit', 'media-select'];
+    textEvents.forEach(id => document.getElementById(id).addEventListener('input', updateLineMessagePreview));
+    document.getElementById('options-container').addEventListener('change', updateLineMessagePreview);
 
-    const addGirlBtn = document.getElementById('add-girl-btn');
-    if(addGirlBtn) addGirlBtn.addEventListener('click', addNewGirl);
-    
-    const copyLineBtn = document.getElementById('btn-copy-line');
-    if(copyLineBtn) copyLineBtn.addEventListener('click', copyLineMessage);
-    
-    const reservationForm = document.getElementById('reservation-form');
-    if(reservationForm) reservationForm.addEventListener('submit', handleFormSubmit);
+    document.getElementById('add-girl-btn').addEventListener('click', addNewGirl);
+    document.getElementById('btn-copy-line').addEventListener('click', copyLineMessage);
+    document.getElementById('reservation-form').addEventListener('submit', handleFormSubmit);
 
     // 🔄 転送システム連動
-    const exportBtn = document.getElementById('btn-export-code');
-    if(exportBtn) exportBtn.addEventListener('click', exportTransferData);
-    
-    const importBtn = document.getElementById('btn-import-code');
-    if(importBtn) importBtn.addEventListener('click', handleImportClick);
+    document.getElementById('btn-export-code').addEventListener('click', exportTransferData);
+    document.getElementById('btn-import-code').addEventListener('click', handleImportClick);
 
     calculateTotalPrice();
     toggleMediaVisibility();
@@ -109,10 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- 🔐 認証関連 ---
 function checkAuth() {
     if (sessionStorage.getItem('isLoggedIn') === 'true') {
-        const loginScreen = document.getElementById('login-screen');
-        const appWrapper = document.getElementById('app-wrapper');
-        if(loginScreen) loginScreen.classList.add('hidden');
-        if(appWrapper) appWrapper.classList.remove('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-wrapper').classList.remove('hidden');
     }
 }
 
@@ -165,10 +136,10 @@ function handleLogout() {
 
 // --- 初期データ処理 ---
 function initGirlsData() {
-    if (localStorage.getItem('app_version') !== 'v6_3') {
+    if (localStorage.getItem('app_version') !== 'v6_1') {
         girlsData = DEFAULT_GIRLS.sort((a, b) => a.localeCompare(b, 'ja'));
         localStorage.setItem('girls_list', JSON.stringify(girlsData));
-        localStorage.setItem('app_version', 'v6_3');
+        localStorage.setItem('app_version', 'v6_1');
     } else {
         try {
             girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
@@ -180,74 +151,41 @@ function initGirlsData() {
 
 function initFormSelects() {
     const courseSelect = document.getElementById('course-time');
-    if(!courseSelect) return;
-    
-    // コース時間を初期化（重複追加防止）
-    courseSelect.innerHTML = '<option value="">-- 時間を選択してください --</option>';
     Object.keys(BASE_PRICES).forEach(mins => courseSelect.add(new Option(`${mins}分 (${BASE_PRICES[mins].toLocaleString()}円)`, mins)));
 
     const extSelect = document.getElementById('extension-time');
-    if(extSelect) {
-        extSelect.innerHTML = '';
-        Object.keys(EXTENSION_PRICES).forEach(mins => {
-            let label = mins == 0 ? "なし" : `+${mins}分 (+${EXTENSION_PRICES[mins].toLocaleString()}円)`;
-            extSelect.add(new Option(label, mins));
-        });
-    }
+    Object.keys(EXTENSION_PRICES).forEach(mins => {
+        let label = mins == 0 ? "なし" : `+${mins}分 (+${EXTENSION_PRICES[mins].toLocaleString()}円)`;
+        extSelect.add(new Option(label, mins));
+    });
 
     const transSelect = document.getElementById('transport-fee');
-    if(transSelect) {
-        transSelect.innerHTML = '';
-        transSelect.add(new Option("なし (0円)", 0));
-        for (let f = 1000; f <= 15000; f += 1000) transSelect.add(new Option(`${f.toLocaleString()}円`, f));
-    }
+    transSelect.add(new Option("なし (0円)", 0));
+    for (let f = 1000; f <= 15000; f += 1000) transSelect.add(new Option(`${f.toLocaleString()}円`, f));
 
-    // 開始時刻 9:30～30:00 (10分単位)
+    // 開始時刻 10分単位
     const timeSelect = document.getElementById('start-time');
-    if(timeSelect) {
-        timeSelect.innerHTML = '';
-        timeSelect.add(new Option("-- 未選択 --", "")); 
-        for (let h = 9; h <= 30; h++) {
-            for (let m = 0; m < 60; m += 10) {
-                // 9時台は30分以降のみ
-                if (h === 9 && m < 30) continue;
-                // 30時台は00分のみ
-                if (h === 30 && m > 0) break;
-                timeSelect.add(new Option(`${h}:${String(m).padStart(2, '0')}`, `${h}:${String(m).padStart(2, '0')}`));
-            }
+    timeSelect.add(new Option("-- 未選択 --", "")); 
+    for (let h = 9; h <= 30; h++) {
+        for (let m = 0; m < 60; m += 10) { 
+            if (h === 30 && m > 0) break;
+            timeSelect.add(new Option(`${h}:${String(m).padStart(2, '0')}`, `${h}:${String(m).padStart(2, '0')}`));
         }
     }
 
-    // 担当者選択
-    const staffSelect = document.getElementById('staff-select');
-    if(staffSelect) {
-        staffSelect.innerHTML = '<option value="">-- 担当者を選択してください --</option>';
-        STAFF_LIST.forEach(staff => staffSelect.add(new Option(staff, staff)));
-    }
-
     const optContainer = document.getElementById('options-container');
-    if(optContainer) {
-        optContainer.innerHTML = ''; // 重複追加防止
-        OPTIONS_LIST.forEach(op => {
-            let lbl = document.createElement('label');
-            lbl.innerHTML = `<input type="checkbox" class="op-checkbox" value="${op}"> ${op}`;
-            optContainer.appendChild(lbl);
-        });
-    }
+    OPTIONS_LIST.forEach(op => {
+        let lbl = document.createElement('label');
+        lbl.innerHTML = `<input type="checkbox" class="op-checkbox" value="${op}"> ${op}`;
+        optContainer.appendChild(lbl);
+    });
 }
 
 function toggleMediaVisibility() {
-    const mediaGroup = document.getElementById('media-group');
-    if(mediaGroup) {
-        mediaGroup.classList.toggle('hidden', document.getElementById('customer-class').value !== '新');
-    }
+    document.getElementById('media-group').classList.toggle('hidden', document.getElementById('customer-class').value !== '新');
 }
-
 function toggleHotelVisibility() {
-    const hotelGroup = document.getElementById('hotel-group');
-    if(hotelGroup) {
-        hotelGroup.classList.toggle('hidden', document.getElementById('meeting-place-select').value === 'その他');
-    }
+    document.getElementById('hotel-group').classList.toggle('hidden', document.getElementById('meeting-place-select').value === 'その他');
 }
 
 function calculateTotalPrice() {
@@ -261,10 +199,7 @@ function calculateTotalPrice() {
 function renderGirls() {
     const listEl = document.getElementById('girl-list');
     const selectEl = document.getElementById('girl-select');
-    if(!listEl || !selectEl) return;
-    
-    listEl.innerHTML = ''; 
-    selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
+    listEl.innerHTML = ''; selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
 
     girlsData.forEach((girl, index) => {
         let li = document.createElement('li');
@@ -277,7 +212,6 @@ function renderGirls() {
 
 function addNewGirl() {
     const input = document.getElementById('new-girl-name');
-    if(!input) return;
     const name = input.value.trim();
     if (name && !girlsData.includes(name)) {
         girlsData.push(name);
@@ -305,52 +239,28 @@ function updateSummary() {
         totalSales += Number(res.price);
         if (res.date === todayStr) { todayCount++; todaySales += Number(res.price); }
     });
-    const todayCountEl = document.getElementById('today-count');
-    const todaySalesEl = document.getElementById('today-sales');
-    const totalCountEl = document.getElementById('total-count');
-    const totalSalesEl = document.getElementById('total-sales');
-    
-    if(todayCountEl) todayCountEl.textContent = todayCount;
-    if(todaySalesEl) todaySalesEl.textContent = todaySales.toLocaleString();
-    if(totalCountEl) totalCountEl.textContent = totalCount;
-    if(totalSalesEl) totalSalesEl.textContent = totalSales.toLocaleString();
+    document.getElementById('today-count').textContent = todayCount;
+    document.getElementById('today-sales').textContent = todaySales.toLocaleString();
+    document.getElementById('total-count').textContent = totalCount;
+    document.getElementById('total-sales').textContent = totalSales.toLocaleString();
 }
 
 // 💬 LINE文章の自動生成
 function updateLineMessagePreview() {
-    const startTimeEl = document.getElementById('start-time');
-    const meetingPlaceEl = document.getElementById('meeting-place-select');
-    const deliveryDetailsEl = document.getElementById('delivery-details');
-    const courseTimeEl = document.getElementById('course-time');
-    const extensionTimeEl = document.getElementById('extension-time');
-    const nominationClassEl = document.getElementById('nomination-class');
-    const customerClassEl = document.getElementById('customer-class');
-    const customerNameEl = document.getElementById('customer-name');
-    const totalPriceEl = document.getElementById('total-price');
-    const hotelSelectEl = document.getElementById('hotel-select');
-    const hotelRoomEl = document.getElementById('hotel-room');
-    const transportFeeEl = document.getElementById('transport-fee');
-    const prevVisitEl = document.getElementById('prev-visit');
-    const staffSelectEl = document.getElementById('staff-select');
-    const lineMessageEl = document.getElementById('line-message-text');
-    
-    if(!lineMessageEl) return;
-
-    const startTime = startTimeEl ? startTimeEl.value : "";
-    const meetingPlace = meetingPlaceEl ? meetingPlaceEl.value : "";
-    const deliveryDetails = deliveryDetailsEl ? deliveryDetailsEl.value.trim() : "";
-    const courseMins = courseTimeEl ? Number(courseTimeEl.value) : 0;
-    const extMins = extensionTimeEl ? Number(extensionTimeEl.value || 0) : 0;
+    const startTime = document.getElementById('start-time').value;
+    const meetingPlace = document.getElementById('meeting-place-select').value;
+    const deliveryDetails = document.getElementById('delivery-details').value.trim();
+    const courseMins = Number(document.getElementById('course-time').value);
+    const extMins = Number(document.getElementById('extension-time').value || 0);
     const totalMins = courseMins + extMins;
-    const nominationClass = nominationClassEl ? nominationClassEl.value : "";
-    const custClass = customerClassEl ? customerClassEl.value : "";
-    const custName = customerNameEl ? customerNameEl.value.trim() : "";
-    const price = totalPriceEl ? totalPriceEl.value : "0";
-    const hotelSelect = hotelSelectEl ? hotelSelectEl.value : "";
-    const hotelRoom = hotelRoomEl ? hotelRoomEl.value.trim() : "";
-    const transportFee = transportFeeEl ? Number(transportFeeEl.value || 0) : 0;
-    const prevVisit = prevVisitEl ? prevVisitEl.value.trim() : "";
-    const staffName = staffSelectEl ? staffSelectEl.value : "";
+    const nominationClass = document.getElementById('nomination-class').value;
+    const custClass = document.getElementById('customer-class').value;
+    const custName = document.getElementById('customer-name').value.trim();
+    const price = document.getElementById('total-price').value;
+    const hotelSelect = document.getElementById('hotel-select').value;
+    const hotelRoom = document.getElementById('hotel-room').value.trim();
+    const transportFee = Number(document.getElementById('transport-fee').value || 0);
+    const prevVisit = document.getElementById('prev-visit').value.trim();
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -366,7 +276,7 @@ function updateLineMessagePreview() {
 
     // 待ち合わせ場所
     let placeLine = "";
-    if (meetingPlace && meetingPlace !== 'その他') {
+    if (meetingPlace !== 'その他') {
         placeLine = meetingPlace.endsWith("待ち合わせ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`;
     }
 
@@ -382,7 +292,7 @@ function updateLineMessagePreview() {
     // ホテル代の計算とテキスト生成
     let hotelPriceStr = "";
     let hotelLine = "";
-    if (hotelSelect && hotelSelect !== 'その他' && meetingPlace && meetingPlace !== 'その他') {
+    if (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') {
         const HOTEL_PRICES = { 60: 2300, 75: 2500, 90: 2600, 120: 2900, 150: 3200, 180: 3500 };
         const hPrice = HOTEL_PRICES[courseMins];
         
@@ -399,13 +309,10 @@ function updateLineMessagePreview() {
         }
     }
 
-    // 担当者情報
-    let staffLine = staffName ? `担当者：${staffName}\n` : "";
-
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${staffLine}${hotelLine}よろしくお願いします`;
-    lineMessageEl.value = message;
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いします！`;
+    document.getElementById('line-message-text').value = message;
 }
 
 function copyLineMessage() {
@@ -418,18 +325,12 @@ function copyLineMessage() {
 function checkMissingFields() {
     let missing = [];
     
-    const startTimeEl = document.getElementById('start-time');
-    const customerNameEl = document.getElementById('customer-name');
-    const phoneNumberEl = document.getElementById('phone-number');
-    const nominationClassEl = document.getElementById('nomination-class');
-    const girlSelectEl = document.getElementById('girl-select');
+    if (!document.getElementById('start-time').value) missing.push("・開始時刻");
+    if (!document.getElementById('customer-name').value.trim()) missing.push("・顧客名");
+    if (!document.getElementById('phone-number').value.trim()) missing.push("・電話番号");
     
-    if(!startTimeEl || !startTimeEl.value) missing.push("・開始時刻");
-    if(!customerNameEl || !customerNameEl.value.trim()) missing.push("・顧客名");
-    if(!phoneNumberEl || !phoneNumberEl.value.trim()) missing.push("・電話番号");
-    
-    const nomClass = nominationClassEl ? nominationClassEl.value : "";
-    const girl = girlSelectEl ? girlSelectEl.value : "";
+    const nomClass = document.getElementById('nomination-class').value;
+    const girl = document.getElementById('girl-select').value;
     // Fフリー以外で、女の子が選ばれていない場合のみ警告
     if (nomClass !== 'F' && !girl) {
         missing.push("・女の子");
@@ -467,7 +368,6 @@ function exportTransferData() {
         dd: document.getElementById('delivery-details').value,
         pv: document.getElementById('prev-visit').value,
         ms: document.getElementById('media-select').value,
-        ss: document.getElementById('staff-select').value,
         ops: selectedOps
     };
 
@@ -475,12 +375,31 @@ function exportTransferData() {
     const baseUrl = window.location.href.split('?')[0];
     const transferUrl = `${baseUrl}?tdata=${code}`;
 
-    const copyText = `【予約データ転送】\n以下のURLを印刷用PCで開くか、コードを読み込んでください。\n\n■ URLで開く（クリックするだけ）\n${transferUrl}\n\n■ コードで読み込む\n${code}`;
+    // 📋 転送情報の整理（見やすく）
+    const girl = data.g || "未選択";
+    const startTime = data.st || "未定";
+    const price = data.pr || "0";
+
+    const copyText = `【予約データ転送】
+
+👩 女の子：${girl}
+🕒 時間：${startTime}
+💵 金額：${Number(price).toLocaleString()}円
+
+以下のURLを印刷用PCで開くか、コードを読み込んでください。
+
+■ URLで開く（クリックするだけ）
+${transferUrl}
+
+■ コードを読み込む（LINE等で共有時）
+${code}
+
+印刷用PCでこのコードをインポートボタンから貼り付けてください。`;
 
     navigator.clipboard.writeText(copyText).then(() => {
-        alert("転送用URLとコードをコピーしました！\nLINE等で印刷用PCに送ってください。");
+        alert("✅ 転送用URLとコードをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
     }).catch(err => {
-        alert("コピー失敗: " + err);
+        alert("❌ コピー失敗: " + err);
     });
 }
 
@@ -530,7 +449,6 @@ function importTransferData(code) {
         if(data.dd) document.getElementById('delivery-details').value = data.dd;
         if(data.pv) document.getElementById('prev-visit').value = data.pv;
         if(data.ms) document.getElementById('media-select').value = data.ms;
-        if(data.ss) document.getElementById('staff-select').value = data.ss;
 
         document.querySelectorAll('.op-checkbox').forEach(cb => cb.checked = false);
         if(data.ops && Array.isArray(data.ops)) {
@@ -546,11 +464,11 @@ function importTransferData(code) {
 
         setTimeout(() => {
             processSubmit(true);
-            alert("データの引き継ぎが完了しました！\n印刷プレビューを確認して、下部のボタンから印刷してください。");
+            alert("✅ データの引き継ぎが完了しました！\n印刷プレビューを確認して、下部のボタンから印刷してください。");
         }, 300);
 
     } catch(e) {
-        alert("コードの読み込みに失敗しました。正しいコードかURLを使用してください。");
+        alert("❌ コードの読み込みに失敗しました。正しいコードかURLを使用してください。");
         console.error(e);
     }
 }
@@ -568,45 +486,28 @@ function processSubmit(skipValidation = false) {
     const dateVal = document.getElementById('reserve-date').value;
     const custClass = document.getElementById('customer-class').value;
     const nominationClass = document.getElementById('nomination-class').value;
-    const girlEl = document.getElementById('girl-select');
-    const girl = girlEl ? girlEl.value : "";
-    const courseTimeEl = document.getElementById('course-time');
-    const courseMins = courseTimeEl ? courseTimeEl.value : "";
-    const extMinsEl = document.getElementById('extension-time');
-    const extMins = extMinsEl ? Number(extMinsEl.value || 0) : 0;
-    const priceEl = document.getElementById('total-price');
-    const price = priceEl ? priceEl.value : "0";
-    const startTimeEl = document.getElementById('start-time');
-    const startTime = startTimeEl ? startTimeEl.value : "";
-    const custNameEl = document.getElementById('customer-name');
-    const custName = custNameEl ? custNameEl.value.trim() : "";
-    const guideStatusEl = document.getElementById('guide-status');
-    const guideStatus = guideStatusEl ? guideStatusEl.value : "";
-    const hotelSelectEl = document.getElementById('hotel-select');
-    const hotelSelect = hotelSelectEl ? hotelSelectEl.value : "";
-    const hotelRoomEl = document.getElementById('hotel-room');
-    const hotelRoom = hotelRoomEl ? hotelRoomEl.value.trim() : "";
-    const phoneEl = document.getElementById('phone-number');
-    const phone = phoneEl ? phoneEl.value.trim() : "";
-    const meetingPlaceEl = document.getElementById('meeting-place-select');
-    const meetingPlace = meetingPlaceEl ? meetingPlaceEl.value : "";
-    const deliveryDetailsEl = document.getElementById('delivery-details');
-    const deliveryDetails = deliveryDetailsEl ? deliveryDetailsEl.value.trim() : "";
-    const prevVisitEl = document.getElementById('prev-visit');
-    const prevVisit = prevVisitEl ? prevVisitEl.value.trim() : "";
-    const mediaSelectEl = document.getElementById('media-select');
-    const mediaSelect = mediaSelectEl ? mediaSelectEl.value : "";
-    const staffSelectEl = document.getElementById('staff-select');
-    const staffSelect = staffSelectEl ? staffSelectEl.value : "";
+    const girl = document.getElementById('girl-select').value;
+    const courseMins = document.getElementById('course-time').value;
+    const extMins = Number(document.getElementById('extension-time').value || 0);
+    const price = document.getElementById('total-price').value;
+    const startTime = document.getElementById('start-time').value;
+    const custName = document.getElementById('customer-name').value.trim();
+    const guideStatus = document.getElementById('guide-status').value;
+    const hotelSelect = document.getElementById('hotel-select').value;
+    const hotelRoom = document.getElementById('hotel-room').value.trim();
+    const phone = document.getElementById('phone-number').value.trim();
+    const meetingPlace = document.getElementById('meeting-place-select').value;
+    const deliveryDetails = document.getElementById('delivery-details').value.trim();
+    const prevVisit = document.getElementById('prev-visit').value.trim();
 
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
     let custTypeStr = (custClass === '新') 
-        ? `新・${nominationClass}(${MEDIA_MAPPING[mediaSelect] || mediaSelect})`
+        ? `新・${nominationClass}(${MEDIA_MAPPING[document.getElementById('media-select').value] || document.getElementById('media-select').value})`
         : `${custClass}・${nominationClass}`;
 
-    let locationStr = (meetingPlace === 'その他' || !meetingPlace) ? "" : meetingPlace;
+    let locationStr = (meetingPlace === 'その他') ? "" : meetingPlace;
     
     let formattedDate = "";
     if (dateVal) {
@@ -616,60 +517,39 @@ function processSubmit(skipValidation = false) {
     }
 
     let hotelAbbrev = "";
-    if (meetingPlace && meetingPlace !== 'その他' && hotelSelect && hotelSelect !== 'その他') {
+    if (meetingPlace !== 'その他' && hotelSelect !== 'その他') {
         hotelAbbrev = HOTEL_ABBREV_MAPPING[hotelSelect] || "";
     }
 
     // 🖨️ レシートプレビュー反映
-    const pDateEl = document.getElementById('p-date');
-    const pCustTypeEl = document.getElementById('p-cust-type');
-    const pGirlEl = document.getElementById('p-girl');
-    const pDurationEl = document.getElementById('p-duration');
-    const pPriceEl = document.getElementById('p-price');
-    const pTimeEl = document.getElementById('p-time');
-    const pConfirmTimeEl = document.getElementById('p-confirm-time');
-    const pCustNameEl = document.getElementById('p-cust-name');
-    const pGuideEl = document.getElementById('p-guide');
-    const pHotelNameEl = document.getElementById('p-hotel-name');
+    document.getElementById('p-date').textContent = formattedDate;
+    document.getElementById('p-cust-type').textContent = custTypeStr;
+    document.getElementById('p-girl').textContent = girl || "—";
+    document.getElementById('p-duration').textContent = extMins > 0 ? `${courseMins}+${extMins}` : `${courseMins}`;
+    document.getElementById('p-price').textContent = `${Number(price).toLocaleString()}円`;
+    document.getElementById('p-time').textContent = startTime || "—";
+    document.getElementById('p-confirm-time').textContent = calculateConfirmTime(startTime);
+    document.getElementById('p-cust-name').textContent = custName || "—";
+    document.getElementById('p-guide').textContent = guideStatus || "未選択";
+    
+    document.getElementById('p-hotel-name').textContent = hotelAbbrev;
     const pRoomEl = document.getElementById('p-room');
-    const pPhoneEl = document.getElementById('p-phone');
-    const pLocationEl = document.getElementById('p-location');
-    const pOptionsEl = document.getElementById('p-options');
-    const pDetailsEl = document.getElementById('p-details');
-    const pPrevEl = document.getElementById('p-prev');
-    const pStaffEl = document.getElementById('p-staff');
-    
-    if(pDateEl) pDateEl.textContent = formattedDate;
-    if(pCustTypeEl) pCustTypeEl.textContent = custTypeStr;
-    if(pGirlEl) pGirlEl.textContent = girl || "—";
-    if(pDurationEl) pDurationEl.textContent = extMins > 0 ? `${courseMins}+${extMins}` : `${courseMins}`;
-    if(pPriceEl) pPriceEl.textContent = `${Number(price).toLocaleString()}円`;
-    if(pTimeEl) pTimeEl.textContent = startTime || "—";
-    if(pConfirmTimeEl) pConfirmTimeEl.textContent = calculateConfirmTime(startTime);
-    if(pCustNameEl) pCustNameEl.textContent = custName || "—";
-    if(pGuideEl) pGuideEl.textContent = guideStatus || "未選択";
-    
-    if(pHotelNameEl) pHotelNameEl.textContent = hotelAbbrev;
-    if(pRoomEl) {
-        pRoomEl.textContent = hotelRoom || ""; 
-        const roomLen = hotelRoom.length;
-        if (roomLen >= 14) pRoomEl.style.fontSize = "9px";
-        else if (roomLen >= 10) pRoomEl.style.fontSize = "11px";
-        else if (roomLen >= 7) pRoomEl.style.fontSize = "13px";
-        else pRoomEl.style.fontSize = "16px";
-    }
+    pRoomEl.textContent = hotelRoom || ""; 
+    const roomLen = hotelRoom.length;
+    if (roomLen >= 14) pRoomEl.style.fontSize = "9px";
+    else if (roomLen >= 10) pRoomEl.style.fontSize = "11px";
+    else if (roomLen >= 7) pRoomEl.style.fontSize = "13px";
+    else pRoomEl.style.fontSize = "16px";
 
-    if(pPhoneEl) pPhoneEl.textContent = phone || "—";
-    if(pLocationEl) pLocationEl.textContent = locationStr;
-    if(pOptionsEl) pOptionsEl.textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
-    if(pDetailsEl) pDetailsEl.textContent = deliveryDetails || "—";
-    if(pPrevEl) pPrevEl.textContent = prevVisit || "—";
-    if(pStaffEl) pStaffEl.textContent = staffSelect || "—";
+    document.getElementById('p-phone').textContent = phone || "—";
+    document.getElementById('p-location').textContent = locationStr;
+    document.getElementById('p-options').textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
+    document.getElementById('p-details').textContent = deliveryDetails || "—";
+    document.getElementById('p-prev').textContent = prevVisit || "—";
 
     allReservations.push({ date: dateVal, price: price });
     localStorage.setItem('reservations_list', JSON.stringify(allReservations));
     updateSummary();
 
-    const receiptArea = document.getElementById('receipt-print-area');
-    if(receiptArea) receiptArea.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('receipt-print-area').scrollIntoView({ behavior: 'smooth' });
 }
