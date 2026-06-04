@@ -16,6 +16,7 @@ for (let i = 0; i <= 600; i += 30) {
 const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P"];
 const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ" };
 const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
+const STAFF_LIST = ["奥山", "高野", "橋本", "田辺", "秋田"];
 
 const DEFAULT_GIRLS = [
     "るな","あいな","ほまれ","ちずる","ふみか","みれい","かほ","そら","めい","なな",
@@ -36,6 +37,15 @@ try {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // URLからの転送データがあるかチェック（ログイン前）
+    const params = new URLSearchParams(window.location.search);
+    const hasTransferData = params.has('tdata');
+    
+    // 転送データがあればログインをスキップ
+    if (hasTransferData) {
+        sessionStorage.setItem('isLoggedIn', 'true');
+    }
+    
     checkAuth();
     initGirlsData();
     initFormSelects();
@@ -51,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
     // リアルタイム再計算・LINE文章連動イベントの整理
-    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class'];
+    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class', 'staff-select'];
     recalcEvents.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
@@ -155,10 +165,10 @@ function handleLogout() {
 
 // --- 初期データ処理 ---
 function initGirlsData() {
-    if (localStorage.getItem('app_version') !== 'v6_2') {
+    if (localStorage.getItem('app_version') !== 'v6_3') {
         girlsData = DEFAULT_GIRLS.sort((a, b) => a.localeCompare(b, 'ja'));
         localStorage.setItem('girls_list', JSON.stringify(girlsData));
-        localStorage.setItem('app_version', 'v6_2');
+        localStorage.setItem('app_version', 'v6_3');
     } else {
         try {
             girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
@@ -192,17 +202,27 @@ function initFormSelects() {
         for (let f = 1000; f <= 15000; f += 1000) transSelect.add(new Option(`${f.toLocaleString()}円`, f));
     }
 
-    // 開始時刻 10分単位（重複追加防止）
+    // 開始時刻 9:30～30:00 (10分単位)
     const timeSelect = document.getElementById('start-time');
     if(timeSelect) {
         timeSelect.innerHTML = '';
         timeSelect.add(new Option("-- 未選択 --", "")); 
         for (let h = 9; h <= 30; h++) {
-            for (let m = 0; m < 60; m += 10) { 
+            for (let m = 0; m < 60; m += 10) {
+                // 9時台は30分以降のみ
+                if (h === 9 && m < 30) continue;
+                // 30時台は00分のみ
                 if (h === 30 && m > 0) break;
                 timeSelect.add(new Option(`${h}:${String(m).padStart(2, '0')}`, `${h}:${String(m).padStart(2, '0')}`));
             }
         }
+    }
+
+    // 担当者選択
+    const staffSelect = document.getElementById('staff-select');
+    if(staffSelect) {
+        staffSelect.innerHTML = '<option value="">-- 担当者を選択してください --</option>';
+        STAFF_LIST.forEach(staff => staffSelect.add(new Option(staff, staff)));
     }
 
     const optContainer = document.getElementById('options-container');
@@ -311,6 +331,7 @@ function updateLineMessagePreview() {
     const hotelRoomEl = document.getElementById('hotel-room');
     const transportFeeEl = document.getElementById('transport-fee');
     const prevVisitEl = document.getElementById('prev-visit');
+    const staffSelectEl = document.getElementById('staff-select');
     const lineMessageEl = document.getElementById('line-message-text');
     
     if(!lineMessageEl) return;
@@ -329,6 +350,7 @@ function updateLineMessagePreview() {
     const hotelRoom = hotelRoomEl ? hotelRoomEl.value.trim() : "";
     const transportFee = transportFeeEl ? Number(transportFeeEl.value || 0) : 0;
     const prevVisit = prevVisitEl ? prevVisitEl.value.trim() : "";
+    const staffName = staffSelectEl ? staffSelectEl.value : "";
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -377,9 +399,12 @@ function updateLineMessagePreview() {
         }
     }
 
+    // 担当者情報
+    let staffLine = staffName ? `担当者：${staffName}\n` : "";
+
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いします`;
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${staffLine}${hotelLine}よろしくお願いします`;
     lineMessageEl.value = message;
 }
 
@@ -442,6 +467,7 @@ function exportTransferData() {
         dd: document.getElementById('delivery-details').value,
         pv: document.getElementById('prev-visit').value,
         ms: document.getElementById('media-select').value,
+        ss: document.getElementById('staff-select').value,
         ops: selectedOps
     };
 
@@ -504,6 +530,7 @@ function importTransferData(code) {
         if(data.dd) document.getElementById('delivery-details').value = data.dd;
         if(data.pv) document.getElementById('prev-visit').value = data.pv;
         if(data.ms) document.getElementById('media-select').value = data.ms;
+        if(data.ss) document.getElementById('staff-select').value = data.ss;
 
         document.querySelectorAll('.op-checkbox').forEach(cb => cb.checked = false);
         if(data.ops && Array.isArray(data.ops)) {
@@ -569,6 +596,8 @@ function processSubmit(skipValidation = false) {
     const prevVisit = prevVisitEl ? prevVisitEl.value.trim() : "";
     const mediaSelectEl = document.getElementById('media-select');
     const mediaSelect = mediaSelectEl ? mediaSelectEl.value : "";
+    const staffSelectEl = document.getElementById('staff-select');
+    const staffSelect = staffSelectEl ? staffSelectEl.value : "";
 
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -608,6 +637,7 @@ function processSubmit(skipValidation = false) {
     const pOptionsEl = document.getElementById('p-options');
     const pDetailsEl = document.getElementById('p-details');
     const pPrevEl = document.getElementById('p-prev');
+    const pStaffEl = document.getElementById('p-staff');
     
     if(pDateEl) pDateEl.textContent = formattedDate;
     if(pCustTypeEl) pCustTypeEl.textContent = custTypeStr;
@@ -634,6 +664,7 @@ function processSubmit(skipValidation = false) {
     if(pOptionsEl) pOptionsEl.textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
     if(pDetailsEl) pDetailsEl.textContent = deliveryDetails || "—";
     if(pPrevEl) pPrevEl.textContent = prevVisit || "—";
+    if(pStaffEl) pStaffEl.textContent = staffSelect || "—";
 
     allReservations.push({ date: dateVal, price: price });
     localStorage.setItem('reservations_list', JSON.stringify(allReservations));
