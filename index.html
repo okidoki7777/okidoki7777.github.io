@@ -21,7 +21,6 @@
                     <input type="password" id="login-pass" placeholder="パスワードを入力" required autocapitalize="off">
                 </div>
                 <button type="submit" class="btn-primary" style="margin-top: 10px;">ログイン</button>
-                
                 <button type="button" id="btn-emergency-reset" class="btn-print" style="margin-top: 15px; background: #7f8c8d; font-size: 0.8rem; padding: 8px;">ID/PASSを初期化 (adminに戻す)</button>
             </form>
         </div>
@@ -125,7 +124,7 @@
                         <select id="course-time" required></select>
                     </div>
                     <div>
-                        <label>延長時間</label>
+                        <label>延長時間 (最大600分)</label>
                         <select id="extension-time"></select>
                     </div>
                     <div>
@@ -199,7 +198,7 @@
 
                 <div class="form-group">
                     <label>デリ詳細・その他・特徴</label>
-                    <input type="text" id="delivery-details" placeholder="例: 堺区自宅デリ・服装　黒パーカー 黒ズボン">
+                    <input type="text" id="delivery-details" placeholder="例: 青パーカー 黒ズボン">
                 </div>
 
                 <div class="form-group">
@@ -222,6 +221,16 @@
                     <button type="submit" class="btn-primary">予約を登録・印刷プレビューに反映</button>
                 </div>
             </form>
+
+            <div class="transfer-box" style="margin-top: 20px; padding: 15px; background: #e8f6f3; border-radius: 5px; border: 1px solid #1abc9c;">
+                <h3 style="margin-top: 0; color: #16a085;">🔄 PC引き継ぎ・印刷転送</h3>
+                <p style="font-size: 13px; margin-bottom: 12px; color: #333;">スマホで入力した内容を、印刷用PCへ一瞬で引き継げます。URLか転送コードをLINEで送ってください。</p>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="btn-export-code" class="btn-primary" style="background: #1abc9c; flex: 1; padding: 15px 5px; font-size: 13px;">📤 転送コードを発行・コピー</button>
+                    <button type="button" id="btn-import-code" class="btn-primary" style="background: #16a085; flex: 1; padding: 15px 5px; font-size: 13px;">📥 送られたコードを読込む</button>
+                </div>
+            </div>
+
         </div>
 
         <div id="receipt-print-area" class="receipt-container">
