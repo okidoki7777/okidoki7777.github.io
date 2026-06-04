@@ -50,7 +50,7 @@
             </details>
 
             <details class="summary-box">
-                <summary>📊 本日の集計・登録データ (タップで開閉)</summary>
+                <summary>📊 本日���集計・登録データ (タップで開閉)</summary>
                 <div class="summary-content">
                     <div class="summary-item">本日の予約数: <span id="today-count">0</span> 件</div>
                     <div class="summary-item">本日の総売上: <span id="today-sales">0</span> 円</div>
@@ -206,9 +206,22 @@
                     <input type="text" id="prev-visit" placeholder="例: 2025年5月31日">
                 </div>
 
-                <div class="form-group">
-                    <label>無料オプション (OP)</label>
-                    <div class="checkbox-grid" id="options-container"></div>
+                <div class="form-group row-inputs">
+                    <div style="flex: 1;">
+                        <label>無料オプション (OP)</label>
+                        <div class="checkbox-grid" id="options-container"></div>
+                    </div>
+                    <div style="flex: 1; margin-left: 10px;">
+                        <label>👤 担当者名 (LINE末尾に追加)</label>
+                        <select id="staff-name">
+                            <option value="">-- 選択してください --</option>
+                            <option value="奥山">奥山</option>
+                            <option value="高野">高野</option>
+                            <option value="橋本">橋本</option>
+                            <option value="田辺">田辺</option>
+                            <option value="秋田">秋田</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group line-box">
