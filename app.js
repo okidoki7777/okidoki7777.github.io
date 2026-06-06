@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('reserve-date').value = new Date().toISOString().split('T')[0];
 
+    // 不要になった「コード読込ボタン」をJS側から自動で隠す
+    const importBtn = document.getElementById('btn-import-code');
+    if (importBtn) importBtn.style.display = 'none';
+
     // イベントリスナー
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('btn-emergency-reset').addEventListener('click', handleEmergencyReset);
@@ -70,7 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 🔄 転送システム連動
     document.getElementById('btn-export-code').addEventListener('click', exportTransferData);
-    document.getElementById('btn-import-code').addEventListener('click', handleImportClick);
 
     calculateTotalPrice();
     toggleMediaVisibility();
@@ -301,12 +304,10 @@ function updateLineMessagePreview() {
         
         if (hPrice) hotelPriceStr = `(ホテル代${hPrice}円)`;
         
-        // 部屋番号が入力されている場合は「ホテル〇〇でお願いします」を非表示にする（二重入力対策）
         if (!hotelRoom) {
             hotelLine += `ホテル${hotelSelect}でお願いします\n`;
         }
         
-        // 差額アナウンス
         if (hotelSelect !== 'ステラ') {
             hotelLine += `ホテル代差額分はお客様払いです。\n`;
         }
@@ -327,7 +328,6 @@ function copyLineMessage() {
     navigator.clipboard.writeText(text).then(() => { alert("LINE文章をコピーしました！"); }).catch(err => { alert("コピー失敗: " + err); });
 }
 
-// ⚠️ 未入力チェックロジック (警告は出すが強行できる)
 function checkMissingFields() {
     let missing = [];
     
@@ -337,7 +337,6 @@ function checkMissingFields() {
     
     const nomClass = document.getElementById('nomination-class').value;
     const girl = document.getElementById('girl-select').value;
-    // Fフリー以外で、女の子が選ばれていない場合のみ警告
     if (nomClass !== 'F' && !girl) {
         missing.push("・女の子");
     }
@@ -345,76 +344,88 @@ function checkMissingFields() {
     if (missing.length > 0) {
         return confirm("⚠️ 以下の項目が未入力です\n\n" + missing.join("\n") + "\n\nこのまま作業を進めますか？");
     }
-    return true; // 漏れがない場合はそのまま進む
+    return true;
 }
 
-// 🔄 PC引き継ぎ・転送システム
-function exportTransferData() {
+// 🔄 転送URL短縮システム
+async function exportTransferData() {
     if (!checkMissingFields()) return;
 
-    let selectedOps = [];
-    document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
+    // ボタンを一時的に無効化し、生成中であることを表示
+    const btn = document.getElementById('btn-export-code');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "⏳ 短縮URLを生成中...";
+    btn.disabled = true;
 
-    const data = {
-        d: document.getElementById('reserve-date').value,
-        cc: document.getElementById('customer-class').value,
-        nc: document.getElementById('nomination-class').value,
-        g: document.getElementById('girl-select').value,
-        ct: document.getElementById('course-time').value,
-        et: document.getElementById('extension-time').value,
-        tf: document.getElementById('transport-fee').value,
-        pr: document.getElementById('total-price').value,
-        st: document.getElementById('start-time').value,
-        cn: document.getElementById('customer-name').value,
-        gs: document.getElementById('guide-status').value,
-        hs: document.getElementById('hotel-select').value,
-        hr: document.getElementById('hotel-room').value,
-        pn: document.getElementById('phone-number').value,
-        mp: document.getElementById('meeting-place-select').value,
-        dd: document.getElementById('delivery-details').value,
-        pv: document.getElementById('prev-visit').value,
-        ms: document.getElementById('media-select').value,
-        sn: document.getElementById('staff-name').value,
-        ops: selectedOps
-    };
+    try {
+        let selectedOps = [];
+        document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-    const code = btoa(encodeURIComponent(JSON.stringify(data)));
-    const baseUrl = window.location.href.split('?')[0];
-    const transferUrl = `${baseUrl}?tdata=${code}`;
+        // 必要なデータだけを取得し、空のデータは省く（URLを軽くするため）
+        const rawData = {
+            d: document.getElementById('reserve-date').value,
+            cc: document.getElementById('customer-class').value,
+            nc: document.getElementById('nomination-class').value,
+            g: document.getElementById('girl-select').value,
+            ct: document.getElementById('course-time').value,
+            et: document.getElementById('extension-time').value,
+            tf: document.getElementById('transport-fee').value,
+            pr: document.getElementById('total-price').value,
+            st: document.getElementById('start-time').value,
+            cn: document.getElementById('customer-name').value,
+            gs: document.getElementById('guide-status').value,
+            hs: document.getElementById('hotel-select').value,
+            hr: document.getElementById('hotel-room').value,
+            pn: document.getElementById('phone-number').value,
+            mp: document.getElementById('meeting-place-select').value,
+            dd: document.getElementById('delivery-details').value,
+            pv: document.getElementById('prev-visit').value,
+            ms: document.getElementById('media-select').value,
+            sn: document.getElementById('staff-name').value,
+            ops: selectedOps
+        };
 
-    // 📋 転送情報の整理（見やすく）
-    const girl = data.g || "未選択";
-    const startTime = data.st || "未定";
-    const price = data.pr || "0";
-    const staffName = data.sn || "未設定";
+        const compactData = {};
+        Object.keys(rawData).forEach(key => {
+            if (rawData[key] !== "" && rawData[key] !== "0" && rawData[key] !== 0 && !(Array.isArray(rawData[key]) && rawData[key].length === 0)) {
+                compactData[key] = rawData[key];
+            }
+        });
 
-    const copyText = `【予約データ転送】
+        const code = btoa(unescape(encodeURIComponent(JSON.stringify(compactData))));
+        const baseUrl = window.location.href.split('?')[0];
+        const longUrl = `${baseUrl}?tdata=${code}`;
 
-👩 女の子：${girl}
-🕒 時間：${startTime}
-💵 金額：${Number(price).toLocaleString()}円
-👤 担当：${staffName}
+        const girl = compactData.g || "未選択";
+        const startTime = compactData.st || "未定";
+        const price = compactData.pr || "0";
+        const staffName = compactData.sn || "未設定";
 
-以下のURLを印刷用PCで開くか、コードを読み込んでください。
+        let finalUrl = longUrl;
 
-■ URLで開く（クリックするだけ）
-${transferUrl}
+        // 短縮URL API (is.gd) を利用してURLを劇的に短くする
+        try {
+            const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+            const json = await response.json();
+            if (json.shorturl) {
+                finalUrl = json.shorturl;
+            }
+        } catch (e) {
+            console.warn("URLの短縮に失敗しました。元の長さのURLを使用します。");
+        }
 
-■ コードを読み込む（LINE等で共有時）
-${code}
+        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用URL（タップして開く）\n${finalUrl}`;
 
-印刷用PCでこのコードをインポートボタンから貼り付けてください。`;
+        await navigator.clipboard.writeText(copyText);
+        alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
 
-    navigator.clipboard.writeText(copyText).then(() => {
-        alert("✅ 転送用URLとコードをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
-    }).catch(err => {
-        alert("❌ コピー失敗: " + err);
-    });
-}
-
-function handleImportClick() {
-    const code = prompt("LINE等で送られてきた【転送コード】（英数字の羅列）を貼り付けてください：");
-    if(code) { importTransferData(code.trim()); }
+    } catch (err) {
+        alert("❌ 転送用URLの作成に失敗しました: " + err);
+    } finally {
+        // ボタンを元に戻す
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 
 function checkUrlForTransfer() {
@@ -429,7 +440,8 @@ function checkUrlForTransfer() {
 
 function importTransferData(code) {
     try {
-        const data = JSON.parse(decodeURIComponent(atob(code)));
+        const jsonStr = decodeURIComponent(escape(atob(code)));
+        const data = JSON.parse(jsonStr);
 
         if(data.d) document.getElementById('reserve-date').value = data.d;
         if(data.cc) document.getElementById('customer-class').value = data.cc;
