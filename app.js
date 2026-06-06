@@ -36,7 +36,7 @@ try {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
+    // 1. フォームやリストの初期化を「先」に行う（データ受け入れ準備）
     initGirlsData();
     initFormSelects();
     renderGirls();
@@ -48,13 +48,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const importBtn = document.getElementById('btn-import-code');
     if (importBtn) importBtn.style.display = 'none';
 
-    // イベントリスナー
+    // 2. 引継ぎURLの確認 (URLにデータがあれば自動で展開し true になる)
+    const isTransferred = checkUrlForTransfer();
+
+    // 3. ログイン状態の確認 (引継ぎ成功時はログイン画面をスキップ)
+    if (!isTransferred && sessionStorage.getItem('isLoggedIn') !== 'true') {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('app-wrapper').classList.add('hidden');
+    } else {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-wrapper').classList.remove('hidden');
+    }
+
+    // イベントリスナーの登録
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('btn-emergency-reset').addEventListener('click', handleEmergencyReset);
     document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
-    // リアルタイム再計算・LINE文章連動イベントの整理
     const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class'];
     recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
         calculateTotalPrice();
@@ -71,26 +82,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-girl-btn').addEventListener('click', addNewGirl);
     document.getElementById('btn-copy-line').addEventListener('click', copyLineMessage);
     document.getElementById('reservation-form').addEventListener('submit', handleFormSubmit);
-
-    // 🔄 転送システム連動
     document.getElementById('btn-export-code').addEventListener('click', exportTransferData);
 
-    calculateTotalPrice();
-    toggleMediaVisibility();
-    toggleHotelVisibility();
-    updateLineMessagePreview();
-
-    checkUrlForTransfer();
+    if (!isTransferred) {
+        calculateTotalPrice();
+        toggleMediaVisibility();
+        toggleHotelVisibility();
+        updateLineMessagePreview();
+    }
 });
 
 // --- 🔐 認証関連 ---
-function checkAuth() {
-    if (sessionStorage.getItem('isLoggedIn') === 'true') {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app-wrapper').classList.remove('hidden');
-    }
-}
-
 function handleLogin(e) {
     e.preventDefault();
     const inputId = document.getElementById('login-id').value.trim();
@@ -100,20 +102,17 @@ function handleLogin(e) {
         sessionStorage.setItem('isLoggedIn', 'true');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-wrapper').classList.remove('hidden');
-        checkUrlForTransfer();
     } else {
-        alert("IDまたはパスワードが間違っています。\n\n大文字・小文字の違いや、文字の最後に空白が入っていないか確認してください。");
+        alert("IDまたはパスワードが間違っています。");
     }
 }
 
 function handleEmergencyReset() {
-    if(confirm("IDとパスワードを初期状態 (admin / admin) にリセットしますか？\n※予約データや女の子リストは消えません。")) {
-        localStorage.setItem('auth_id', 'admin');
-        localStorage.setItem('auth_pass', 'admin');
+    if(confirm("IDとパスワードを初期状態 (admin / admin) にリセットしますか？")) {
+        localStorage.setItem('auth_id', 'admin'); localStorage.setItem('auth_pass', 'admin');
         savedId = 'admin'; savedPass = 'admin';
-        document.getElementById('login-id').value = '';
-        document.getElementById('login-pass').value = '';
-        alert("リセットが完了しました。\n\nID: admin\nパスワード: admin\n\nでログインしてください。");
+        document.getElementById('login-id').value = ''; document.getElementById('login-pass').value = '';
+        alert("リセットが完了しました。\nID: admin\nパスワード: admin\nでログインしてください。");
     }
 }
 
@@ -132,9 +131,7 @@ function handleAuthUpdate() {
 function handleLogout() {
     if (confirm("ログアウトしますか？")) {
         sessionStorage.removeItem('isLoggedIn');
-        document.getElementById('app-wrapper').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('login-id').value = ''; document.getElementById('login-pass').value = '';
+        location.reload();
     }
 }
 
@@ -145,11 +142,7 @@ function initGirlsData() {
         localStorage.setItem('girls_list', JSON.stringify(girlsData));
         localStorage.setItem('app_version', 'v6_2');
     } else {
-        try {
-            girlsData = JSON.parse(localStorage.getItem('girls_list')) || [];
-        } catch(e) {
-            girlsData = DEFAULT_GIRLS;
-        }
+        try { girlsData = JSON.parse(localStorage.getItem('girls_list')) || []; } catch(e) { girlsData = DEFAULT_GIRLS; }
     }
 }
 
@@ -167,13 +160,12 @@ function initFormSelects() {
     transSelect.add(new Option("なし (0円)", 0));
     for (let f = 1000; f <= 15000; f += 1000) transSelect.add(new Option(`${f.toLocaleString()}円`, f));
 
-    // 🕒 開始時刻 9:30～30:00 (10分単位)
     const timeSelect = document.getElementById('start-time');
     timeSelect.add(new Option("-- 未選択 --", "")); 
     for (let h = 9; h <= 30; h++) {
         for (let m = 0; m < 60; m += 10) { 
-            if (h === 9 && m < 30) continue; // 9:30未満をスキップ
-            if (h === 30 && m > 0) break; // 30:00以降をスキップ
+            if (h === 9 && m < 30) continue;
+            if (h === 30 && m > 0) break;
             timeSelect.add(new Option(`${h}:${String(m).padStart(2, '0')}`, `${h}:${String(m).padStart(2, '0')}`));
         }
     }
@@ -186,12 +178,8 @@ function initFormSelects() {
     });
 }
 
-function toggleMediaVisibility() {
-    document.getElementById('media-group').classList.toggle('hidden', document.getElementById('customer-class').value !== '新');
-}
-function toggleHotelVisibility() {
-    document.getElementById('hotel-group').classList.toggle('hidden', document.getElementById('meeting-place-select').value === 'その他');
-}
+function toggleMediaVisibility() { document.getElementById('media-group').classList.toggle('hidden', document.getElementById('customer-class').value !== '新'); }
+function toggleHotelVisibility() { document.getElementById('hotel-group').classList.toggle('hidden', document.getElementById('meeting-place-select').value === 'その他'); }
 
 function calculateTotalPrice() {
     const base = BASE_PRICES[document.getElementById('course-time').value] || 0;
@@ -219,16 +207,11 @@ function addNewGirl() {
     const input = document.getElementById('new-girl-name');
     const name = input.value.trim();
     if (name && !girlsData.includes(name)) {
-        girlsData.push(name);
-        girlsData.sort((a, b) => a.localeCompare(b, 'ja'));
-        input.value = '';
-        renderGirls();
+        girlsData.push(name); girlsData.sort((a, b) => a.localeCompare(b, 'ja'));
+        input.value = ''; renderGirls();
     }
 }
-
-function deleteGirl(index) {
-    if (confirm("削除しますか？")) { girlsData.splice(index, 1); renderGirls(); }
-}
+function deleteGirl(index) { if (confirm("削除しますか？")) { girlsData.splice(index, 1); renderGirls(); } }
 
 function calculateConfirmTime(startTimeStr) {
     if (!startTimeStr) return "";
@@ -250,7 +233,7 @@ function updateSummary() {
     document.getElementById('total-sales').textContent = totalSales.toLocaleString();
 }
 
-// 💬 LINE文章の自動生成
+// 💬 LINE文章生成
 function updateLineMessagePreview() {
     const startTime = document.getElementById('start-time').value;
     const meetingPlace = document.getElementById('meeting-place-select').value;
@@ -264,58 +247,32 @@ function updateLineMessagePreview() {
     const price = document.getElementById('total-price').value;
     const hotelSelect = document.getElementById('hotel-select').value;
     const hotelRoom = document.getElementById('hotel-room').value.trim();
-    const transportFee = Number(document.getElementById('transport-fee').value || 0);
     const prevVisit = document.getElementById('prev-visit').value.trim();
     const staffName = document.getElementById('staff-name').value;
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-    // 指名区分の生成
     let nomStr = {'F': 'フリー', 'N': 'ネット指名', '本': '本指名'}[nominationClass] || "";
-
-    // 顧客名の生成 + 前回の欄があれば横に付与する
     let custStr = (custClass === '新') ? (custName ? `新規${custName}様` : "新規様") : (custName ? `会員${custName}様` : "会員様");
-    if (prevVisit) {
-        custStr += `(前回${prevVisit})`;
-    }
+    if (prevVisit) custStr += `(前回${prevVisit})`;
 
-    // 待ち合わせ場所
-    let placeLine = "";
-    if (meetingPlace !== 'その他') {
-        placeLine = meetingPlace.endsWith("待ち合わせ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`;
-    }
-
-    // デリ詳細と部屋番号
+    let placeLine = (meetingPlace !== 'その他') ? (meetingPlace.endsWith("待ち合わせ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`) : "";
     let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
     let roomLine = hotelRoom ? `${hotelRoom}\n` : "";
-    
-    // 第1ブロックの結合
     let block1 = (placeLine || detailLine || roomLine) ? `${placeLine}${detailLine}${roomLine}\n` : "\n";
-
     let opLine = selectedOps.length > 0 ? `OP：${selectedOps.join('、')}\n\n` : "";
     
-    // ホテル代の計算とテキスト生成
-    let hotelPriceStr = "";
-    let hotelLine = "";
+    let hotelPriceStr = ""; let hotelLine = "";
     if (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') {
         const HOTEL_PRICES = { 60: 2300, 75: 2500, 90: 2600, 120: 2900, 150: 3200, 180: 3500 };
         const hPrice = HOTEL_PRICES[courseMins];
-        
         if (hPrice) hotelPriceStr = `(ホテル代${hPrice}円)`;
-        
-        if (!hotelRoom) {
-            hotelLine += `ホテル${hotelSelect}でお願いします\n`;
-        }
-        
-        if (hotelSelect !== 'ステラ') {
-            hotelLine += `ホテル代差額分はお客様払いです。\n`;
-        }
+        if (!hotelRoom) hotelLine += `ホテル${hotelSelect}でお願いします\n`;
+        if (hotelSelect !== 'ステラ') hotelLine += `ホテル代差額分はお客様払いです。\n`;
     }
 
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
-
-    // 担当者名の末尾追加
     let staffLine = staffName ? `\n\n担当：${staffName}` : "";
 
     const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いします！${staffLine}`;
@@ -330,28 +287,22 @@ function copyLineMessage() {
 
 function checkMissingFields() {
     let missing = [];
-    
     if (!document.getElementById('start-time').value) missing.push("・開始時刻");
     if (!document.getElementById('customer-name').value.trim()) missing.push("・顧客名");
     if (!document.getElementById('phone-number').value.trim()) missing.push("・電話番号");
     
     const nomClass = document.getElementById('nomination-class').value;
     const girl = document.getElementById('girl-select').value;
-    if (nomClass !== 'F' && !girl) {
-        missing.push("・女の子");
-    }
+    if (nomClass !== 'F' && !girl) missing.push("・女の子");
 
-    if (missing.length > 0) {
-        return confirm("⚠️ 以下の項目が未入力です\n\n" + missing.join("\n") + "\n\nこのまま作業を進めますか？");
-    }
+    if (missing.length > 0) return confirm("⚠️ 以下の項目が未入力です\n\n" + missing.join("\n") + "\n\nこのまま作業を進めますか？");
     return true;
 }
 
-// 🔄 転送URL短縮システム
+// 🔄 超短縮URL生成（セキュリティブロック回避方式）
 async function exportTransferData() {
     if (!checkMissingFields()) return;
 
-    // ボタンを一時的に無効化し、生成中であることを表示
     const btn = document.getElementById('btn-export-code');
     const originalText = btn.innerHTML;
     btn.innerHTML = "⏳ 短縮URLを生成中...";
@@ -361,7 +312,6 @@ async function exportTransferData() {
         let selectedOps = [];
         document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
-        // 必要なデータだけを取得し、空のデータは省く（URLを軽くするため）
         const rawData = {
             d: document.getElementById('reserve-date').value,
             cc: document.getElementById('customer-class').value,
@@ -392,7 +342,7 @@ async function exportTransferData() {
             }
         });
 
-        const code = btoa(unescape(encodeURIComponent(JSON.stringify(compactData))));
+        const code = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(compactData)))));
         const baseUrl = window.location.href.split('?')[0];
         const longUrl = `${baseUrl}?tdata=${code}`;
 
@@ -403,39 +353,69 @@ async function exportTransferData() {
 
         let finalUrl = longUrl;
 
-        // 短縮URL API (is.gd) を利用してURLを劇的に短くする
+        // 🌟 セキュリティを回避する通信（JSONP）で確実にURLを短くする
         try {
-            const response = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
-            const json = await response.json();
-            if (json.shorturl) {
-                finalUrl = json.shorturl;
-            }
+            finalUrl = await new Promise((resolve, reject) => {
+                const callbackName = 'isgd_callback_' + Math.floor(Math.random() * 1000000);
+                
+                const timeoutId = setTimeout(() => {
+                    cleanup();
+                    reject(new Error('Timeout'));
+                }, 5000);
+
+                const cleanup = () => {
+                    delete window[callbackName];
+                    const s = document.getElementById(callbackName);
+                    if (s) document.body.removeChild(s);
+                };
+
+                window[callbackName] = function(data) {
+                    clearTimeout(timeoutId);
+                    cleanup();
+                    if (data && data.shorturl) {
+                        resolve(data.shorturl);
+                    } else {
+                        reject(new Error('API failed'));
+                    }
+                };
+
+                const script = document.createElement('script');
+                script.id = callbackName;
+                script.src = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}&callback=${callbackName}`;
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    cleanup();
+                    reject(new Error('Network error'));
+                };
+                document.body.appendChild(script);
+            });
         } catch (e) {
-            console.warn("URLの短縮に失敗しました。元の長さのURLを使用します。");
+            console.warn("URL短縮に失敗しました。元の長さのURLを使用します。");
         }
 
         const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用URL（タップして開く）\n${finalUrl}`;
 
         await navigator.clipboard.writeText(copyText);
-        alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
+        alert("✅ 短縮URLをコピーしました！\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
 
     } catch (err) {
         alert("❌ 転送用URLの作成に失敗しました: " + err);
     } finally {
-        // ボタンを元に戻す
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
 }
 
 function checkUrlForTransfer() {
-    if (sessionStorage.getItem('isLoggedIn') !== 'true') return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get('tdata');
     if (code) {
+        sessionStorage.setItem('isLoggedIn', 'true'); // 強制的にログイン状態にする
         importTransferData(code);
         window.history.replaceState({}, document.title, window.location.pathname);
+        return true;
     }
+    return false;
 }
 
 function importTransferData(code) {
@@ -490,7 +470,7 @@ function importTransferData(code) {
         }, 300);
 
     } catch(e) {
-        alert("❌ コードの読み込みに失敗しました。正しいコードかURLを使用してください。");
+        alert("❌ 引き継ぎURLの読み込みに失敗しました。URLが途切れていないか確認してください。");
         console.error(e);
     }
 }
@@ -501,7 +481,6 @@ function handleFormSubmit(e) {
     processSubmit();
 }
 
-// 実際の登録・プレビュー反映処理
 function processSubmit(skipValidation = false) {
     updateLineMessagePreview();
 
@@ -543,7 +522,6 @@ function processSubmit(skipValidation = false) {
         hotelAbbrev = HOTEL_ABBREV_MAPPING[hotelSelect] || "";
     }
 
-    // 🖨️ レシートプレビュー反映
     document.getElementById('p-date').textContent = formattedDate;
     document.getElementById('p-cust-type').textContent = custTypeStr;
     document.getElementById('p-girl').textContent = girl || "—";
