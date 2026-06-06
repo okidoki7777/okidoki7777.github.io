@@ -36,7 +36,6 @@ try {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. フォームやリストの初期化を「先」に行う（データ受け入れ準備）
     initGirlsData();
     initFormSelects();
     renderGirls();
@@ -44,14 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('reserve-date').value = new Date().toISOString().split('T')[0];
 
-    // 不要になった「コード読込ボタン」をJS側から自動で隠す
     const importBtn = document.getElementById('btn-import-code');
     if (importBtn) importBtn.style.display = 'none';
 
-    // 2. 引継ぎURLの確認 (URLにデータがあれば自動で展開し true になる)
     const isTransferred = checkUrlForTransfer();
 
-    // 3. ログイン状態の確認 (引継ぎ成功時はログイン画面をスキップ)
     if (!isTransferred && sessionStorage.getItem('isLoggedIn') !== 'true') {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-wrapper').classList.add('hidden');
@@ -60,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('app-wrapper').classList.remove('hidden');
     }
 
-    // イベントリスナーの登録
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('btn-emergency-reset').addEventListener('click', handleEmergencyReset);
     document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
@@ -112,7 +107,7 @@ function handleEmergencyReset() {
         localStorage.setItem('auth_id', 'admin'); localStorage.setItem('auth_pass', 'admin');
         savedId = 'admin'; savedPass = 'admin';
         document.getElementById('login-id').value = ''; document.getElementById('login-pass').value = '';
-        alert("リセットが完了しました。\nID: admin\nパスワード: admin\nでログインしてください。");
+        alert("リセット完了しました。");
     }
 }
 
@@ -197,8 +192,7 @@ function renderGirls() {
     girlsData.forEach((girl, index) => {
         let li = document.createElement('li');
         li.innerHTML = `<span>${girl}</span><span class="delete-girl" onclick="deleteGirl(${index})">× 削除</span>`;
-        listEl.appendChild(li);
-        selectEl.add(new Option(girl, girl));
+        listEl.appendChild(li); selectEl.add(new Option(girl, girl));
     });
     localStorage.setItem('girls_list', JSON.stringify(girlsData));
 }
@@ -299,7 +293,7 @@ function checkMissingFields() {
     return true;
 }
 
-// 🔄 超短縮URL生成（セキュリティブロック回避方式）
+// 🔄 超強力版: URL短縮システム（中継サーバー＋フォールバックでブロック回避）
 async function exportTransferData() {
     if (!checkMissingFields()) return;
 
@@ -353,53 +347,43 @@ async function exportTransferData() {
 
         let finalUrl = longUrl;
 
-        // 🌟 セキュリティを回避する通信（JSONP）で確実にURLを短くする
+        // 🌟 スマホのセキュリティブロックをすり抜けるための強力な短縮処理
         try {
-            finalUrl = await new Promise((resolve, reject) => {
-                const callbackName = 'isgd_callback_' + Math.floor(Math.random() * 1000000);
-                
-                const timeoutId = setTimeout(() => {
-                    cleanup();
-                    reject(new Error('Timeout'));
-                }, 5000);
-
-                const cleanup = () => {
-                    delete window[callbackName];
-                    const s = document.getElementById(callbackName);
-                    if (s) document.body.removeChild(s);
-                };
-
-                window[callbackName] = function(data) {
-                    clearTimeout(timeoutId);
-                    cleanup();
-                    if (data && data.shorturl) {
-                        resolve(data.shorturl);
-                    } else {
-                        reject(new Error('API failed'));
+            // 第1ルート：安全な中継サーバー経由で is.gd を叩く
+            const isgdUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(isgdUrl)}`;
+            
+            const res1 = await fetch(proxyUrl);
+            const data1 = await res1.json();
+            if (data1 && data1.contents) {
+                const parsed = JSON.parse(data1.contents);
+                if (parsed.shorturl) {
+                    finalUrl = parsed.shorturl;
+                }
+            }
+        } catch (e1) {
+            console.warn("第1ルート失敗。TinyURLに切り替えます", e1);
+            try {
+                // 第2ルート：TinyURL を直接叩く（予備）
+                const res2 = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                if (res2.ok) {
+                    const text2 = await res2.text();
+                    if (text2 && text2.startsWith("http")) {
+                        finalUrl = text2;
                     }
-                };
-
-                const script = document.createElement('script');
-                script.id = callbackName;
-                script.src = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}&callback=${callbackName}`;
-                script.onerror = () => {
-                    clearTimeout(timeoutId);
-                    cleanup();
-                    reject(new Error('Network error'));
-                };
-                document.body.appendChild(script);
-            });
-        } catch (e) {
-            console.warn("URL短縮に失敗しました。元の長さのURLを使用します。");
+                }
+            } catch (e2) {
+                console.warn("URL短縮に完全に失敗しました", e2);
+            }
         }
 
         const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用URL（タップして開く）\n${finalUrl}`;
 
         await navigator.clipboard.writeText(copyText);
-        alert("✅ 短縮URLをコピーしました！\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
+        alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
 
     } catch (err) {
-        alert("❌ 転送用URLの作成に失敗しました: " + err);
+        alert("❌ エラーが発生しました: " + err);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -410,7 +394,7 @@ function checkUrlForTransfer() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('tdata');
     if (code) {
-        sessionStorage.setItem('isLoggedIn', 'true'); // 強制的にログイン状態にする
+        sessionStorage.setItem('isLoggedIn', 'true');
         importTransferData(code);
         window.history.replaceState({}, document.title, window.location.pathname);
         return true;
