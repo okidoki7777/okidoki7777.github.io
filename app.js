@@ -3,7 +3,7 @@ let savedId = localStorage.getItem('auth_id') || 'admin';
 let savedPass = localStorage.getItem('auth_pass') || 'admin';
 
 const BASE_PRICES = {
-    60: 10000, 75: 13000, 90: 15000, 120: 21000, 150: 27000,
+    60: 10000, 75: 13000, 90: 15000, 100: 13000, 120: 21000, 150: 27000,
     180: 33000, 240: 45000, 300: 57000, 360: 69000
 };
 
@@ -13,8 +13,8 @@ for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
 }
 
-const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパン・ノーブラ"];
-const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "ホットヘルパー": "ホット" };
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レ[...]
+const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "[...]
 const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
 
 const DEFAULT_GIRLS = [
@@ -187,7 +187,7 @@ function calculateTotalPrice() {
 function renderGirls() {
     const listEl = document.getElementById('girl-list');
     const selectEl = document.getElementById('girl-select');
-    listEl.innerHTML = ''; selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
+    listEl.innerHTML = ''; selectEl.innerHTML = '<option value="">-- 女の子を選択��てください --</option>';
 
     girlsData.forEach((girl, index) => {
         let li = document.createElement('li');
@@ -258,7 +258,9 @@ function updateLineMessagePreview() {
     let opLine = selectedOps.length > 0 ? `OP：${selectedOps.join('、')}\n\n` : "";
     
     let hotelPriceStr = ""; let hotelLine = "";
-    if (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他') {
+    let isSpecialEvent = courseMins === 100; // 100分は新規イベント
+    
+    if (hotelSelect && hotelSelect !== 'その他' && meetingPlace !== 'その他' && !isSpecialEvent) {
         const HOTEL_PRICES = { 60: 2300, 75: 2500, 90: 2600, 120: 2900, 150: 3200, 180: 3500 };
         const hPrice = HOTEL_PRICES[courseMins];
         if (hPrice) hotelPriceStr = `(ホテル代${hPrice}円)`;
@@ -266,10 +268,18 @@ function updateLineMessagePreview() {
         if (hotelSelect !== 'ステラ') hotelLine += `ホテル代差額分はお客様払いです。\n`;
     }
 
+    // 100分の場合はホテル代がお客様負担
+    if (isSpecialEvent) {
+        hotelLine += `※ホテル代お客様負担になります！\n`;
+        if (hotelSelect && hotelSelect !== 'その他') {
+            hotelLine += `\nホテル${hotelSelect}でお願いします\n`;
+        }
+    }
+
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
     let staffLine = staffName ? `\n\n担当：${staffName}` : "";
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n\n${opLine}${hotelLine}よろしくお願いします！${staffLine}`;
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n${hotelLine}\n${opLine}よろしくお願いします！${staffLine}`;
     document.getElementById('line-message-text').value = message;
 }
 
@@ -377,7 +387,7 @@ async function exportTransferData() {
             }
         }
 
-        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用URL（タップして開く）\n${finalUrl}`;
+        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用PC へ\n${finalUrl}`;
 
         await navigator.clipboard.writeText(copyText);
         alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
