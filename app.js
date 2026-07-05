@@ -13,9 +13,9 @@ for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
 }
 
-const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパンノーブラ",]
-const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ",]
-const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "　",};
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパンノーブラ"];
+const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ" };
+const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "　" };
 
 const DEFAULT_GIRLS = [
     "るな","あいな","ほまれ","ちずる","ふみか","みれい","かほ","そら","めい","なな",
@@ -23,7 +23,7 @@ const DEFAULT_GIRLS = [
     "かなみ","れおな","せつな","かえで","みなみ","さくら","ありす","えりか","すい","りさ",
     "すみれ","らん","かなこ","わかな","りりこ","すずな","ゆい","みお","みちる","としえ",
     "ゆうか","じゅり","わか","みやび","かなえ","ぼたん","ひとみ","あげは","あおい","さよこ",
-    "なつめ","のぞみ","ひより","かすみ","ゆずは","まいか","れい","ほたる","じゅんこ","ゆりあ"
+    "なつめ","のぞみ","ひより","かすみ","ゆずは","まいか","れい","ほたる","じゅんこ","ゆりあ",
     "ちはる","やよい","きさき","まりあ","なるみ","こうめ","すばる"
 ];
 
@@ -34,6 +34,12 @@ try {
     allReservations = JSON.parse(localStorage.getItem('reservations_list')) || [];
 } catch(e) {
     allReservations = [];
+}
+
+// ログイン状態を確認する関数
+function isUserLoggedIn() {
+    // sessionStorage または localStorage でログイン状態を確認
+    return sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isUserLoggedIn') === 'true';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -49,7 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isTransferred = checkUrlForTransfer();
 
-    if (!isTransferred && sessionStorage.getItem('isLoggedIn') !== 'true') {
+    // 修正：sessionStorage と localStorage の両方でログイン状態を確認
+    if (!isTransferred && !isUserLoggedIn()) {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('app-wrapper').classList.add('hidden');
     } else {
@@ -96,6 +103,7 @@ function handleLogin(e) {
 
     if (inputId === savedId && inputPass === savedPass) {
         sessionStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isUserLoggedIn', 'true');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-wrapper').classList.remove('hidden');
     } else {
@@ -127,6 +135,7 @@ function handleAuthUpdate() {
 function handleLogout() {
     if (confirm("ログアウトしますか？")) {
         sessionStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('isUserLoggedIn');
         location.reload();
     }
 }
@@ -188,7 +197,7 @@ function calculateTotalPrice() {
 function renderGirls() {
     const listEl = document.getElementById('girl-list');
     const selectEl = document.getElementById('girl-select');
-    listEl.innerHTML = ''; selectEl.innerHTML = '<option value="">-- 女の子を選択��てください --</option>';
+    listEl.innerHTML = ''; selectEl.innerHTML = '<option value="">-- 女の子を選択してください --</option>';
 
     girlsData.forEach((girl, index) => {
         let li = document.createElement('li');
@@ -252,7 +261,7 @@ function updateLineMessagePreview() {
     let custStr = (custClass === '新') ? (custName ? `新規${custName}様` : "新規様") : (custName ? `会員${custName}様` : "会員様");
     if (prevVisit) custStr += `(前回${prevVisit})`;
 
-    let placeLine = (meetingPlace !== 'その他') ? (meetingPlace.endsWith("待ち合わせ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`) : "";
+    let placeLine = (meetingPlace !== 'その他') ? (meetingPlace.endsWith("待ち合��せ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`) : "";
     let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
     let roomLine = hotelRoom ? `${hotelRoom}\n` : "";
     let block1 = (placeLine || detailLine || roomLine) ? `${placeLine}${detailLine}${roomLine}\n` : "\n";
@@ -280,7 +289,7 @@ function updateLineMessagePreview() {
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
     let staffLine = staffName ? `\n\n担当：${staffName}` : "";
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n${hotelLine}\n${opLine}よろしくお願いします！${staffLine}`;
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n${hotelLine}\n${opLine}よろしくお願いします${staffLine}`;
     document.getElementById('line-message-text').value = message;
 }
 
@@ -388,7 +397,7 @@ async function exportTransferData() {
             }
         }
 
-        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用PC へ\n${finalUrl}`;
+        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用URLはこちら\n${finalUrl}`;
 
         await navigator.clipboard.writeText(copyText);
         alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
@@ -406,6 +415,7 @@ function checkUrlForTransfer() {
     const code = params.get('tdata');
     if (code) {
         sessionStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('isUserLoggedIn', 'true');
         importTransferData(code);
         window.history.replaceState({}, document.title, window.location.pathname);
         return true;
