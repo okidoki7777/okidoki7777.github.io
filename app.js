@@ -13,8 +13,8 @@ for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
 }
 
-const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパンノーブラ"];
-const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ" };
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "中出し", "乳首責め", "手コキ", "素股", "バック", "顔面騎乗", "その他"];
+const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "その他": "その他" };
 const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "　" };
 
 const DEFAULT_GIRLS = [
@@ -69,13 +69,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
-    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class'];
+    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class', 'point-use', 'discount-input'];
     recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
         calculateTotalPrice();
         updateLineMessagePreview();
         if(id === 'customer-class') toggleMediaVisibility();
         if(id === 'meeting-place-select') toggleHotelVisibility();
     }));
+    
+    // ポイント使用・割引入力のイベント
+    document.getElementById('point-use').addEventListener('input', () => {
+        calculateTotalPrice();
+        updateLineMessagePreview();
+    });
+    document.getElementById('discount-input').addEventListener('input', () => {
+        calculateTotalPrice();
+        updateLineMessagePreview();
+    });
 
     const textEvents = ['start-time', 'customer-name', 'delivery-details', 'hotel-room', 'prev-visit', 'media-select', 'staff-name'];
     textEvents.forEach(id => document.getElementById(id).addEventListener('input', updateLineMessagePreview));
@@ -142,10 +152,10 @@ function handleLogout() {
 
 // --- 初期データ処理 ---
 function initGirlsData() {
-    if (localStorage.getItem('app_version') !== 'v6_2') {
+    if (localStorage.getItem('app_version') !== 'v6_3') {
         girlsData = DEFAULT_GIRLS.sort((a, b) => a.localeCompare(b, 'ja'));
         localStorage.setItem('girls_list', JSON.stringify(girlsData));
-        localStorage.setItem('app_version', 'v6_2');
+        localStorage.setItem('app_version', 'v6_3');
     } else {
         try { girlsData = JSON.parse(localStorage.getItem('girls_list')) || []; } catch(e) { girlsData = DEFAULT_GIRLS; }
     }
@@ -181,6 +191,13 @@ function initFormSelects() {
         lbl.innerHTML = `<input type="checkbox" class="op-checkbox" value="${op}"> ${op}`;
         optContainer.appendChild(lbl);
     });
+    
+    // ポイント使用の選択肢を初期化
+    const pointSelect = document.getElementById('point-use');
+    pointSelect.add(new Option("なし (0P)", 0));
+    for (let p = 1000; p <= 100000; p += 1000) {
+        pointSelect.add(new Option(`${p.toLocaleString()}P`, p));
+    }
 }
 
 function toggleMediaVisibility() { document.getElementById('media-group').classList.toggle('hidden', document.getElementById('customer-class').value !== '新'); }
@@ -191,7 +208,17 @@ function calculateTotalPrice() {
     const ext = EXTENSION_PRICES[document.getElementById('extension-time').value || 0] || 0;
     const transport = Number(document.getElementById('transport-fee').value || 0);
     const nominationAdd = (document.getElementById('nomination-class').value === '本') ? 1000 : 0;
-    document.getElementById('total-price').value = base + ext + transport + nominationAdd;
+    
+    // ポイント割引計算
+    const pointUse = Number(document.getElementById('point-use').value || 0);
+    const discountInput = Number(document.getElementById('discount-input').value || 0);
+    const totalDiscount = pointUse + discountInput;
+    
+    const subtotal = base + ext + transport + nominationAdd;
+    const finalPrice = Math.max(0, subtotal - totalDiscount);
+    
+    document.getElementById('total-price').value = finalPrice;
+    document.getElementById('discount-amount').textContent = totalDiscount > 0 ? `-${totalDiscount.toLocaleString()}円` : "0円";
 }
 
 function renderGirls() {
@@ -253,6 +280,9 @@ function updateLineMessagePreview() {
     const hotelRoom = document.getElementById('hotel-room').value.trim();
     const prevVisit = document.getElementById('prev-visit').value.trim();
     const staffName = document.getElementById('staff-name').value;
+    const pointUse = Number(document.getElementById('point-use').value || 0);
+    const discountInput = Number(document.getElementById('discount-input').value || 0);
+    const totalDiscount = pointUse + discountInput;
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -261,7 +291,8 @@ function updateLineMessagePreview() {
     let custStr = (custClass === '新') ? (custName ? `新規${custName}様` : "新規様") : (custName ? `会員${custName}様` : "会員様");
     if (prevVisit) custStr += `(前回${prevVisit})`;
 
-    let placeLine = (meetingPlace !== 'その他') ? (meetingPlace.endsWith("待ち合��せ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`) : "";
+    // 修正：「その他」選択時の場所表示
+    let placeLine = (meetingPlace !== 'その他') ? (meetingPlace.endsWith("待ち合わせ") ? `${meetingPlace}\n` : `${meetingPlace}待ち合わせ\n`) : "";
     let detailLine = deliveryDetails ? `${deliveryDetails}\n` : "";
     let roomLine = hotelRoom ? `${hotelRoom}\n` : "";
     let block1 = (placeLine || detailLine || roomLine) ? `${placeLine}${detailLine}${roomLine}\n` : "\n";
@@ -288,8 +319,11 @@ function updateLineMessagePreview() {
 
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
     let staffLine = staffName ? `\n\n担当：${staffName}` : "";
+    
+    // 割引適用時の注釈
+    let discountNote = totalDiscount > 0 ? "\n※割引適用後の料金です" : "";
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}\n${hotelLine}\n${opLine}よろしくお願いします${staffLine}`;
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}${discountNote}\n${hotelLine}\n${opLine}よろしくお願いします${staffLine}`;
     document.getElementById('line-message-text').value = message;
 }
 
@@ -346,6 +380,8 @@ async function exportTransferData() {
             pv: document.getElementById('prev-visit').value,
             ms: document.getElementById('media-select').value,
             sn: document.getElementById('staff-name').value,
+            pu: document.getElementById('point-use').value,
+            di: document.getElementById('discount-input').value,
             ops: selectedOps
         };
 
@@ -397,7 +433,7 @@ async function exportTransferData() {
             }
         }
 
-        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\n■ 印刷用URLはこちら\n${finalUrl}`;
+        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\nURL：${finalUrl}`;
 
         await navigator.clipboard.writeText(copyText);
         alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
@@ -456,6 +492,8 @@ function importTransferData(code) {
         if(data.pv) document.getElementById('prev-visit').value = data.pv;
         if(data.ms) document.getElementById('media-select').value = data.ms;
         if(data.sn) document.getElementById('staff-name').value = data.sn;
+        if(data.pu) document.getElementById('point-use').value = data.pu;
+        if(data.di) document.getElementById('discount-input').value = data.di;
 
         document.querySelectorAll('.op-checkbox').forEach(cb => cb.checked = false);
         if(data.ops && Array.isArray(data.ops)) {
@@ -505,12 +543,14 @@ function processSubmit(skipValidation = false) {
     const meetingPlace = document.getElementById('meeting-place-select').value;
     const deliveryDetails = document.getElementById('delivery-details').value.trim();
     const prevVisit = document.getElementById('prev-visit').value.trim();
+    const mediaSelect = document.getElementById('media-select').value;
 
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
 
+    // 修正：「その他」選択時は mediaSelect ではなく "その他" を使用
     let custTypeStr = (custClass === '新') 
-        ? `新・${nominationClass}(${MEDIA_MAPPING[document.getElementById('media-select').value] || document.getElementById('media-select').value})`
+        ? `新・${nominationClass}(${mediaSelect === 'その他' ? 'その他' : (MEDIA_MAPPING[mediaSelect] || mediaSelect)})`
         : `${custClass}・${nominationClass}`;
 
     let locationStr = (meetingPlace === 'その他') ? "" : meetingPlace;
