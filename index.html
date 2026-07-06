@@ -23,6 +23,17 @@
                 <button type="submit" class="btn-primary" style="margin-top: 10px;">ログイン</button>
                 <button type="button" id="btn-emergency-reset" class="btn-print" style="margin-top: 15px; background: #7f8c8d; font-size: 0.8rem; padding: 8px;">ID/PASSを初期化 (adminに戻す)</button>
             </form>
+            <div class="auth-settings" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <div class="form-group">
+                    <label>新しいID</label>
+                    <input type="text" id="new-auth-id" placeholder="新しいIDを入力" autocapitalize="off">
+                </div>
+                <div class="form-group">
+                    <label>新しいパスワード</label>
+                    <input type="password" id="new-auth-pass" placeholder="新しいパスワードを入力" autocapitalize="off">
+                </div>
+                <button type="button" id="btn-update-auth" class="btn-primary" style="background:#8e44ad; font-size: 0.85rem;">ID/PASSを変更</button>
+            </div>
         </div>
     </div>
 
@@ -34,16 +45,7 @@
             <details class="summary-box admin-settings">
                 <summary>🔒 セキュリティ・アカウント設定 (タップで開閉)</summary>
                 <div class="summary-content auth-content">
-                    <div class="form-group">
-                        <label>新しいID</label>
-                        <input type="text" id="new-auth-id" placeholder="新しいIDを入力" autocapitalize="off">
-                    </div>
-                    <div class="form-group">
-                        <label>新しいパスワード</label>
-                        <input type="password" id="new-auth-pass" placeholder="新しいパスワードを入力" autocapitalize="off">
-                    </div>
                     <div class="row-inputs-3">
-                        <button type="button" id="btn-update-auth" class="btn-primary" style="background:#8e44ad;">ID/PASSを変更</button>
                         <button type="button" id="btn-logout" class="btn-print" style="background:#e74c3c;">ログアウト</button>
                     </div>
                 </div>
@@ -133,8 +135,25 @@
                     </div>
                 </div>
 
+                <div class="form-group row-inputs-3">
+                    <div>
+                        <label>ポイント使用 (1P＝1円割引)</label>
+                        <select id="point-use"></select>
+                    </div>
+                    <div>
+                        <label>手打ち割引 (手動入力)</label>
+                        <input type="number" id="discount-input" min="0" value="0" placeholder="円">
+                    </div>
+                    <div>
+                        <label>割引額合計</label>
+                        <div style="padding: 8px; background: #fff9e6; border: 1px solid #f0ad4e; border-radius: 4px; text-align: center; font-weight: bold; color: #d58512;">
+                            <span id="discount-amount">0円</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label>料金 (自動連動・手動微調整可能)</label>
+                    <label>料金 (割引後の金額が表示されます)</label>
                     <input type="number" id="total-price" min="0" required>
                 </div>
 
