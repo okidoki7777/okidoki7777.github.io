@@ -13,9 +13,9 @@ for (let i = 0; i <= 600; i += 30) {
     EXTENSION_PRICES[i] = (i / 30) * 6000;
 }
 
-const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レズ3P", "逆3P", "膝枕耳かき", "ノーパンノーブラ"];
-const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ", "その他": "その他" };
-const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "" };
+const OPTIONS_LIST = ["ピンクローター", "バイブ挿入", "電マ", "飛びっこ", "即尺", "ごっくん", "顔射", "オナニー鑑賞", "聖水", "パンスト破り", "AF", "3P", "レ[...]
+const MEDIA_MAPPING = { "シティヘヴン": "ヘヴン", "ぴゅあらば": "ぴゅあ", "デリヘルタウン": "タウン", "口コミ情報局": "口コミ", "風俗じゃぱん": "風じゃ[...]
+const HOTEL_ABBREV_MAPPING = { "ステラ": "S", "AI": "A", "おしゃべりダック": "お", "リーベ": "リ", "リンド": "L", "その他": "　" };
 
 const DEFAULT_GIRLS = [
     "るな","あいな","ほまれ","ちずる","ふみか","みれい","かほ","そら","めい","なな",
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-update-auth').addEventListener('click', handleAuthUpdate);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     
-    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class', 'point-use', 'discount-input'];
+    const recalcEvents = ['course-time', 'extension-time', 'transport-fee', 'nomination-class', 'meeting-place-select', 'hotel-select', 'customer-class', 'point-use', 'discount-input', 'credit-payment'];
     recalcEvents.forEach(id => document.getElementById(id).addEventListener('change', () => {
         calculateTotalPrice();
         updateLineMessagePreview();
@@ -214,11 +214,16 @@ function calculateTotalPrice() {
     const discountInput = Number(document.getElementById('discount-input').value || 0);
     const totalDiscount = pointUse + discountInput;
     
-    const subtotal = base + ext + transport + nominationAdd;
-    const finalPrice = Math.max(0, subtotal - totalDiscount);
+    let subtotal = base + ext + transport + nominationAdd;
+    let finalPrice = Math.max(0, subtotal - totalDiscount);
     
-    document.getElementById('total-price').value = finalPrice;
+    // クレジット決済の場合は1.20倍
+    const isCreditPayment = document.getElementById('credit-payment').checked;
+    const creditPrice = isCreditPayment ? Math.floor(finalPrice * 1.2) : finalPrice;
+    
+    document.getElementById('total-price').value = creditPrice;
     document.getElementById('discount-amount').textContent = totalDiscount > 0 ? `-${totalDiscount.toLocaleString()}円` : "0円";
+    document.getElementById('credit-price-display').textContent = isCreditPayment ? `${creditPrice.toLocaleString()}円` : `${finalPrice.toLocaleString()}円`;
 }
 
 function renderGirls() {
@@ -283,6 +288,7 @@ function updateLineMessagePreview() {
     const pointUse = Number(document.getElementById('point-use').value || 0);
     const discountInput = Number(document.getElementById('discount-input').value || 0);
     const totalDiscount = pointUse + discountInput;
+    const isCreditPayment = document.getElementById('credit-payment').checked;
     
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
@@ -320,10 +326,22 @@ function updateLineMessagePreview() {
     const startTimeDisp = startTime ? `${startTime}～` : "未定～";
     let staffLine = staffName ? `\n\n担当：${staffName}` : "";
     
-    // 割引適用時の注釈
-    let discountNote = totalDiscount > 0 ? "\n※割引適用後の料金です" : "";
+    // LINE文章の料金表示
+    let priceLine = "";
+    let paymentNote = "";
+    
+    if (isCreditPayment) {
+        // クレジット決済の場合は料金を表示しない
+        paymentNote = "\n※料金はクレジット決済で頂いています！";
+    } else if (totalDiscount > 0) {
+        // ポイント使用ありの場合
+        priceLine = `料金${price}円`;
+        paymentNote = "\n※割引適用後の料金です";
+    } else {
+        priceLine = `料金${price}円`;
+    }
 
-    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n料金${price}円${hotelPriceStr}${discountNote}\n${hotelLine}\n${opLine}よろしくお願いします${staffLine}`;
+    const message = `ご予約詳細です！\n\n${startTimeDisp}\n\n${block1}${totalMins}分${nomStr}\n${custStr}\n${priceLine}${hotelPriceStr}${paymentNote}\n${hotelLine}\n${opLine}よろしくお願いします${staffLine}`;
     document.getElementById('line-message-text').value = message;
 }
 
@@ -382,6 +400,7 @@ async function exportTransferData() {
             sn: document.getElementById('staff-name').value,
             pu: document.getElementById('point-use').value,
             di: document.getElementById('discount-input').value,
+            cp: document.getElementById('credit-payment').checked ? 1 : 0,
             ops: selectedOps
         };
 
@@ -494,6 +513,7 @@ function importTransferData(code) {
         if(data.sn) document.getElementById('staff-name').value = data.sn;
         if(data.pu) document.getElementById('point-use').value = data.pu;
         if(data.di) document.getElementById('discount-input').value = data.di;
+        if(data.cp) document.getElementById('credit-payment').checked = true;
 
         document.querySelectorAll('.op-checkbox').forEach(cb => cb.checked = false);
         if(data.ops && Array.isArray(data.ops)) {
@@ -544,9 +564,24 @@ function processSubmit(skipValidation = false) {
     const deliveryDetails = document.getElementById('delivery-details').value.trim();
     const prevVisit = document.getElementById('prev-visit').value.trim();
     const mediaSelect = document.getElementById('media-select').value;
+    const pointUse = Number(document.getElementById('point-use').value || 0);
+    const isCreditPayment = document.getElementById('credit-payment').checked;
 
     let selectedOps = [];
     document.querySelectorAll('.op-checkbox:checked').forEach(cb => selectedOps.push(cb.value));
+
+    // ポイント使用とクレジット決済の記載
+    let detailsToDisplay = deliveryDetails;
+    if (pointUse > 0 || isCreditPayment) {
+        let additionalInfo = [];
+        if (pointUse > 0) {
+            additionalInfo.push(`(${(pointUse/1000).toFixed(0)},000PT利用)`);
+        }
+        if (isCreditPayment) {
+            additionalInfo.push('(クレジット決済)');
+        }
+        detailsToDisplay = deliveryDetails + (deliveryDetails ? ' ' : '') + additionalInfo.join(' ');
+    }
 
     // 修正：「その他」選択時は mediaSelect ではなく "その他" を使用
     let custTypeStr = (custClass === '新') 
@@ -589,7 +624,7 @@ function processSubmit(skipValidation = false) {
     document.getElementById('p-phone').textContent = phone || "—";
     document.getElementById('p-location').textContent = locationStr;
     document.getElementById('p-options').textContent = selectedOps.length > 0 ? selectedOps.join('、') : "なし";
-    document.getElementById('p-details').textContent = deliveryDetails || "—";
+    document.getElementById('p-details').textContent = detailsToDisplay || "—";
     document.getElementById('p-prev').textContent = prevVisit || "—";
 
     allReservations.push({ date: dateVal, price: price });
