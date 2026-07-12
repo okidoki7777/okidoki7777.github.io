@@ -46,6 +46,34 @@ document.addEventListener('DOMContentLoaded', () => {
     initFormSelects();
     renderGirls();
     updateSummary();
+    // hidden flag を自動追加
+if (!document.getElementById('start-now-flag')) {
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = 'start-now-flag';
+    hidden.value = '0';
+    document.getElementById('reservation-form').appendChild(hidden);
+}
+
+// 「今からすぐ」ボタンのイベント
+const startNowBtn = document.getElementById('btn-start-now');
+if (startNowBtn) {
+    startNowBtn.addEventListener('click', () => {
+        setStartNowMode(!isStartNowMode());
+    });
+}
+
+// 手動時刻選択で今からすぐ解除
+const startTimeEl = document.getElementById('start-time');
+if (startTimeEl) {
+    startTimeEl.addEventListener('change', () => {
+        if (!startTimeEl.disabled && isStartNowMode()) {
+            setStartNowMode(false);
+        } else {
+            updateLineMessagePreview();
+        }
+    });
+}
 
     document.getElementById('reserve-date').value = new Date().toISOString().split('T')[0];
 
@@ -322,7 +350,7 @@ function updateLineMessagePreview() {
         }
     }
 
-    const startTimeDisp = startTime ? `${startTime}～` : "未定～";
+    const startTimeDisp = isStartNowMode() ? "今からすぐ" : (startTime ? `${startTime}～` : "未定～");
     let staffLine = staffName ? `\n\n担当：${staffName}` : "";
     
     // LINE文章の料金表示
@@ -350,9 +378,39 @@ function copyLineMessage() {
     navigator.clipboard.writeText(text).then(() => { alert("LINE文章をコピーしました！"); }).catch(err => { alert("コピー失敗: " + err); });
 }
 
+function isStartNowMode() {
+    const f = document.getElementById('start-now-flag');
+    return !!f && f.value === '1';
+}
+
+function setStartNowMode(enabled) {
+    const startTimeEl = document.getElementById('start-time');
+    const badgeEl = document.getElementById('start-now-badge');
+    const flagEl = document.getElementById('start-now-flag');
+
+    if (!startTimeEl || !badgeEl || !flagEl) return;
+
+    if (enabled) {
+        startTimeEl.dataset.prevValue = startTimeEl.value || "";
+        startTimeEl.value = "";
+        startTimeEl.disabled = true;
+        flagEl.value = "1";
+        badgeEl.classList.remove('hidden');
+    } else {
+        startTimeEl.disabled = false;
+        flagEl.value = "0";
+        badgeEl.classList.add('hidden');
+        if (typeof startTimeEl.dataset.prevValue !== 'undefined') {
+            startTimeEl.value = startTimeEl.dataset.prevValue;
+        }
+    }
+
+    updateLineMessagePreview();
+}
+
 function checkMissingFields() {
     let missing = [];
-    if (!document.getElementById('start-time').value) missing.push("・開始時刻");
+    if (!isStartNowMode() && !document.getElementById('start-time').value) missing.push("・開始時刻");
     if (!document.getElementById('customer-name').value.trim()) missing.push("・顧客名");
     if (!document.getElementById('phone-number').value.trim()) missing.push("・電話番号");
     
@@ -641,8 +699,17 @@ function processSubmit(skipValidation = false) {
     document.getElementById('p-girl').textContent = girl || "—";
     document.getElementById('p-duration').textContent = extMins > 0 ? `${courseMins}+${extMins}` : `${courseMins}`;
     document.getElementById('p-price').textContent = `${Number(price).toLocaleString()}円`;
+    if (isStartNowMode()) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const nowStr = `${hh}:${mm}`; // 例 21:34
+    document.getElementById('p-time').textContent = nowStr;
+    document.getElementById('p-confirm-time').textContent = "";
+    } else {
     document.getElementById('p-time').textContent = startTime || "—";
     document.getElementById('p-confirm-time').textContent = calculateConfirmTime(startTime);
+    }
     document.getElementById('p-cust-name').textContent = custName || "—";
     document.getElementById('p-guide').textContent = guideStatus || "未選択";
     
