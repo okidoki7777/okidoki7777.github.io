@@ -364,13 +364,59 @@ function checkMissingFields() {
     return true;
 }
 
-// 🔄 超強力版: URL短縮システム（中継サーバー＋フォールバックでブロック回避）
+// URL転送設定
+const ENABLE_SHORTEN = false;      // ← 最速運用: 短縮しない
+const SHORTEN_TIMEOUT_MS = 1200;   // 短縮ON時、1.2秒で打ち切り
+
+async function shortenWithTimeout(longUrl, timeoutMs = SHORTEN_TIMEOUT_MS) {
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('shorten timeout')), timeoutMs)
+    );
+
+    const shortenTask = (async () => {
+        // 第1ルート：is.gd（allorigins経由）
+        try {
+            const isgdUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(isgdUrl)}`;
+            const res1 = await fetch(proxyUrl);
+            const data1 = await res1.json();
+            if (data1 && data1.contents) {
+                const parsed = JSON.parse(data1.contents);
+                if (parsed.shorturl) return parsed.shorturl;
+            }
+        } catch (e1) {
+            console.warn("短縮第1ルート失敗", e1);
+        }
+
+        // 第2ルート：TinyURL
+        try {
+            const res2 = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+            if (res2.ok) {
+                const text2 = await res2.text();
+                if (text2 && text2.startsWith("http")) return text2;
+            }
+        } catch (e2) {
+            console.warn("短縮第2ルート失敗", e2);
+        }
+
+        // 失敗時は長URL
+        return longUrl;
+    })();
+
+    try {
+        return await Promise.race([shortenTask, timeout]);
+    } catch (e) {
+        return longUrl;
+    }
+}
+
+// 🔄 URL転送（最速: 長URL即コピー / 任意で短縮）
 async function exportTransferData() {
     if (!checkMissingFields()) return;
 
     const btn = document.getElementById('btn-export-code');
     const originalText = btn.innerHTML;
-    btn.innerHTML = "⏳ 短縮URLを生成中...";
+    btn.innerHTML = ENABLE_SHORTEN ? "⏳ URL準備中..." : "⏳ URLを作成中...";
     btn.disabled = true;
 
     try {
@@ -405,7 +451,12 @@ async function exportTransferData() {
 
         const compactData = {};
         Object.keys(rawData).forEach(key => {
-            if (rawData[key] !== "" && rawData[key] !== "0" && rawData[key] !== 0 && !(Array.isArray(rawData[key]) && rawData[key].length === 0)) {
+            if (
+                rawData[key] !== "" &&
+                rawData[key] !== "0" &&
+                rawData[key] !== 0 &&
+                !(Array.isArray(rawData[key]) && rawData[key].length === 0)
+            ) {
                 compactData[key] = rawData[key];
             }
         });
@@ -421,40 +472,24 @@ async function exportTransferData() {
 
         let finalUrl = longUrl;
 
-        // 🌟 スマホのセキュリティブロックをすり抜けるための強力な短縮処理
-        try {
-            // 第1ルート：安全な中継サーバー経由で is.gd を叩く
-            const isgdUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(isgdUrl)}`;
-            
-            const res1 = await fetch(proxyUrl);
-            const data1 = await res1.json();
-            if (data1 && data1.contents) {
-                const parsed = JSON.parse(data1.contents);
-                if (parsed.shorturl) {
-                    finalUrl = parsed.shorturl;
-                }
-            }
-        } catch (e1) {
-            console.warn("第1ルート失敗。TinyURLに切り替えます", e1);
-            try {
-                // 第2ルート：TinyURL を直接叩く（予備）
-                const res2 = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-                if (res2.ok) {
-                    const text2 = await res2.text();
-                    if (text2 && text2.startsWith("http")) {
-                        finalUrl = text2;
-                    }
-                }
-            } catch (e2) {
-                console.warn("URL短縮に完全に失敗しました", e2);
-            }
+        // 短縮は任意（デフォルトOFF）・ON時も高速打ち切り
+        if (ENABLE_SHORTEN) {
+            finalUrl = await shortenWithTimeout(longUrl, SHORTEN_TIMEOUT_MS);
         }
 
-        const copyText = `【予約データ転送】\n\n👩 女の子：${girl}\n🕒 時間：${startTime}\n💵 金額：${Number(price).toLocaleString()}円\n👤 担当：${staffName}\n\nURL：${finalUrl}`;
+        const copyText =
+`【予約データ転送】
+
+👩 女の子：${girl}
+🕒 時間：${startTime}
+💵 金額：${Number(price).toLocaleString()}円
+👤 担当：${staffName}
+
+URL：${finalUrl}`;
 
         await navigator.clipboard.writeText(copyText);
-        alert("✅ 短縮URLをコピーしました！\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n" + copyText);
+
+        alert(`${ENABLE_SHORTEN ? "✅ 短縮URLをコピーしました！" : "✅ URLをコピーしました！"}\n\nLINE等で印刷用PCに送ってください。\n\n─────────\n` + copyText);
 
     } catch (err) {
         alert("❌ エラーが発生しました: " + err);
